@@ -6,21 +6,32 @@
 # -- repositorio: https://github.com/violetarcia/LAB_02_KVGH.git
 # -- ------------------------------------------------------------------------------------ -- #
 import pandas as pd
+import numpy as np
 
-# Funcion para leer archivo de datos
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - FUNCION: Leer archivo - #
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+
+''' Funcion para leer archivo de datos
+        f_leer_archivo :
+        Leer tu archivo histórico de operaciones, 
+        es el que se descarga de MT4 en formato .xlsx.
+'''
 def f_leer_archivo(param_archivo):
     """
     Parameters
     ---------
-    :param param_archivo: str : nombre de archivo leer
+    :param: 
+        param_archivo: str : nombre de archivo leer
 
     Returns
     ---------
-    :return: df_data: DataFrame
+    :return: 
+        df_data: DataFrame : Datos del archivo
 
     Debuggin
     ---------
-    param_archivo = 'archivo_tradeview_1.xlsx'
+        param_archivo = 'archivo_tradeview_1.xlsx'
 
     """
 
@@ -34,112 +45,298 @@ def f_leer_archivo(param_archivo):
     #df_data.columns = [df_data[i] for i in range(len(df_data)) if df_data[i] == 'buy' or df_data[i] == 'sell' ]
 
     # Asegurar que ciertas columnas son del tipo numerico
-    #num_col = ['order', 'size', 'openprice', 's/l', 't/p', 'closeprice', 'taxes', 'swap', 'profit']
-    #df_data[num_col] = df_data[num_col].apply(pd.to_numeric)
+    num_col = ['order', 'size', 'openprice', 's/l', 't/p', 'closeprice', 'taxes', 'swap', 'profit']
+    df_data[num_col] = df_data[num_col].apply(pd.to_numeric)
 
     return df_data
 
 
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - FUNCION: pip de instrumento - #
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+    
 ''' Función para obtener el numero multplicador
-para expresar la diferencia de precios en pips
+    para expresar la diferencia de precios en pips
+        f_pip_size:
+        Función para obtener el número multiplicador 
+        para expresar la diferencia de precios en pips.
 '''
 def f_pip_size(param_ins):
     """
+
     Parameters
     ---------
-    :param param_ins: str : nombre de instrumento para asociarse el multiplicador de pips
+    :param: 
+        param_ins: str : nombre de instrumento para asociarse el multiplicador de pips
 
     Returns
     ---------
-    :return: pip: int
+    :return: 
+        pip_inst: int
 
     Debuggin
+        param_ins = 'usdjpy'
+    
     ---------
 
     """
-    if param_ins == "usdjpy-2":
-        num_pip = 1000
-    else:
-        num_pip = 10000
-    return num_pip
+    # transformar a minusculas
+    inst = param_ins.lower()
+
+    # lista de pips por instrumento
+    pips_inst = {
+                'usdjpy': 100, 'gbpjpy': 100, 'eurjpy': 100, 'cadjpy': 100,
+                 'chfjpy': 100,'eurusd': 10000, 'gbpusd': 10000, 'usdcad': 10000, 
+                 'usdmxn': 10000,'audusd': 10000, 'nzdusd': 10000, 'usdchf': 10000,
+                 'eurgbp': 10000, 'eurchf': 10000, 'eurnzd': 10000, 'euraud': 10000,
+                 'gbpnzd': 10000, 'gbpchf': 10000, 'gbpaud': 10000, 'audnzd': 10000, 
+                 'nzdcad': 10000, 'audcad': 10000, 'xauusd': 10, 'xagusd': 10, 'btcusd': 1
+                 }
+
+    return pips_inst[inst]
 
 
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  FUNCION: Tiempo de operacion - #
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+    
 ''' Función para agregar mas columnas de transformaciones de tiempo
+        f_columnas_tiempos:
+        Agregar mas columnas de transformaciones de tiempo
 '''
 def f_columnas_tiempos(param_data):
     """
+
     Parameters
     ---------
-    :param param_data: DataFrame : frame del archivo de operaciones
+    :param: 
+        param_data: DataFrame : Data frame del archivo de operaciones
 
     Returns
     ---------
-    :return: df_tiempos: DataFrame
+    :return: 
+        param_data: DataFrame
 
     Debuggin
     ---------
-    param_archivo = 'archivo_tradeview_1.xlsx'
+        param_data = f_leer_archivo('archivo_tradeview_1.xlsx')
 
     """
+    # Convertir el tipo de las columnas de closetime y opentime a 'Date'
+    param_data['closetime'] = pd.to_datetime(param_data['closetime'])
+    param_data['opentime'] = pd.to_datetime(param_data['opentime'])
 
-    return 0
+    # Tiempo entre el transcurso de la operacion
+    param_data['time'] = [(param_data.loc[i, 'closetime'] - param_data.loc[i, 'opentime']).delta
+                            for i in range(len(param_data['closetime']))]
 
+    return param_data
+
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - FUNCION: Visitas en el tiempo - #
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+
+'''f_columnas_pips: Agregar nuevas columnas: 
+    - - - - - - - - - - - - - - - - - - - -
+    'pips', que es la columna de pérdida o ganancia de la operación expresada en pips
+    - - - - - - - - - - - - - - - - - - - - 
+    'pips_acm' que son los pips acumulados operación por operación 
+        (la suma acumulativa de la columna pips), 
+    - - - - - - - - - - - - - - - - - - - -
+    'profit_acm', que es el profit en capital, que acumula la cuenta 
+        (también es la suma acumulativa de la columna profit)
+'''
 
 def f_columna_pips(param_data):
     """
     Parameters
     ---------
-    :param param_archivo: str : nombre de archivo leer
+    :param:
+        param_archivo: str : nombre de archivo leer
 
     Returns
     ---------
-    :return: df_data: DataFrame
+    :return: 
+        df_data: DataFrame
 
     Debuggin
     ---------
-    param_archivo = 'archivo_tradeview_1.xlsx'
+        param_archivo = f_leer_archivo('archivo_tradeview_1.xlsx')
 
     """
+    # Agregar pips
+    param_data['pips'] = [
+            (param_data.closeprice[i] - param_data.openprice[i])*f_pip_size(
+                    param_data.symbol[i])
+            if param_data.type[i] == 'buy' 
+            else - (param_data.closeprice[i] - param_data.openprice[i])*f_pip_size(
+                    param_data.symbol[i])
+        for i in range(len(param_data))
+        ]
+    
+    # Agregar los pips acumulados
+    param_data['pips_acm'] = param_data.pips.cumsum()
+    
+    # Agregar rentabilidad acumulada
+    param_data['profit_acm'] = param_data['profit'].cumsum()
+    
+    return param_data
 
-    return 0
 
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - FUNCION: Estadistica basica - #
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 
+''' f_estadisticas_ba: Una función cuya salida es un diccionario, 
+    ese diccionario de salida debe de tener 2 llaves, 'df_1_tabla' y 'df_2_ranking'
+    - - - - - - - - - - - - - - - - - - - -
+        df_1_tabla:
+            
+        medida	        valor	descripcion
+        Ops totales	      84	Operaciones totales
+        Ganadoras	      46	Operaciones ganadoras
+        Ganadoras_c	      20	Operaciones ganadoras de compra
+        Ganadoras_v	      26	Operaciones perdedoras de venta
+        Perdedoras	      38	Operaciones perdedoras
+        Perdedoras_c	  19	Operaciones perdedoras de compra
+        Perdedoras_v	  19	Operaciones perdedoras de venta
+        Media (Profit)	1.205	Mediana de profit de operaciones   
+        Media (Pips)	   3	Mediana de pips de operaciones
+        r_efectividad	1.83	Ganadoras Totales/Operaciones Totales
+        r_proporcion	1.21	Perdedoras Totales/Ganadoras Totales
+        r_efectividad_c	  4.2	Ganadoras Compras/Operaciones Totales
+        r_efectividad_v	3.23	Ganadoras Ventas/ Operaciones Totales
+        - - - - - - - - - - - - - - - - - - - -
+'''
 def f_estadistica_ba(param_data):
     """
     Parameters
     ---------
-    :param param_archivo: str : nombre de archivo leer
+    :param 
+        param_archivo: DataFrame : archivo
 
     Returns
     ---------
-    :return: df_data: DataFrame
+    :return: 
+        df_1_tabla: DataFrame
+        df_2_ranking: DataFrame
 
     Debuggin
     ---------
-    param_archivo = 'archivo_tradeview_1.xlsx'
+        param_archivo = f_leer_archivo('archivo_tradeview_1.xlsx')
 
     """
+    df_1_tabla = pd.DataFrame(
+            {
+                    'Ops totales':
+                        [
+                                len(param_data['order']), 
+                                'Operaciones totales'
+                                ],
+                    
+                    'Ganadoras':
+                        [
+                                len(param_data[param_data['pips_acm'] > 0]), 
+                                'Operaciones ganadoras'
+                                ], 
+                        
+                    'Ganadoras_c':
+                        [
+                                len([(param_data['type'] == 'buy') & (param_data['pips_acm'] > 0)]), 
+                                'Operaciones ganadoras de compra'
+                                ],
+                        
+                    'Ganadoras_v':
+                        [
+                                len(param_data[(param_data['type'] == 'sell') & (param_data['pips_acm'] > 0)]), 
+                                'Operaciones ganadoras de venta'
+                                ],
+                        
+                    'Perdedoras':
+                        [
+                                len(param_data[param_data['pips_acm'] < 0]), 
+                                'Operaciones perdedoras'
+                                ],
+                        
+                    'Perdedoras_c':
+                        [
+                                len(param_data[(param_data['type'] == 'buy') & (param_data['pips_acm'] < 0)]), 
+                                'Operaciones perdedoras de compra'
+                                ],
+                        
+                    'Perdedoras_v':
+                        [
+                                len(param_data[(param_data['type'] == 'sell') & (param_data['pips_acm'] < 0)]), 
+                                'Operaciones perdedoras de venta'
+                                ],
+                        
+                    'Media (Profit)':
+                        [
+                                param_data['profit'].median(), 
+                                'Mediana de profit de las operaciones'
+                                ],
+                        
+                    'Media (Pips)':
+                        [
+                                param_data['pips_acm'].median(), 
+                                'Mediana de pips de las operaciones'
+                                ],
+                        
+                    'r_efectividad':
+                        [
+                                len(param_data[param_data['pips_acm'] > 0]) / 
+                                len(param_data['order']),
+                                'Ganadoras Totales/Operaciones Totales'
+                                ],
+                        
+                    'r_proporcion':
+                        [
+                                len(param_data[param_data['pips_acm'] > 0]) / 
+                                len(param_data[param_data['pips_acm'] < 0]),
+                                'Ganadoras Totales/ Perdedoras Totales'
+                                ],
+                        
+                    'r_efectividad_c':
+                        [
+                                len(param_data[(param_data['type'] == 'buy') & (param_data['pips_acm'] > 0)]) /
+                                len(param_data[param_data['type']=='buy']),
+                            'Ganadoras Compras/ Operaciones Totales'
+                            ],
+                        
+                    'r_efectividad_v':
+                        [
+                                len(param_data[(param_data['type'] == 'sell') & (param_data['pips_acm'] > 0)]) /
+                                len(param_data[param_data['type'] == 'sell']),
+                            'Ganadoras Ventas/ Operaciones Totales'
+                            ]
+                },
+                index=['Valor', 'Descripcion']
+            ).T
+    
+    # - - - - - - - - - - - - - - - - - - -
+    
+    # Symbols (unicos) en el DataFrame dado
+    symbols = param_data.symbol.unique()
+    
+    # Creacion de DataFrame con ranking por symbol
+    df_2_ranking = pd.DataFrame(
+            {
+                # Symbol
+                i: 
+                    # Porcentaje: del symbol que tiene profit positivo entre el total
+                    len(param_data.query( f"(profit > 0) and (symbol == '{i}')")) /
+                    len(param_data[param_data.symbol == i])
+                    
+            # Para todos los elementos de symbols 
+            for i in symbols
+            }, 
+        
+        # Nombre de la columna del DataFrame para ordenar
+        index = ['ranking']).T.sort_values(
+                by='ranking', 
+                ascending=False)
+        
+   # df_2_ranking.applymap('{:.2f}%'.format)
+    
+    return df_1_tabla, df_2_ranking
 
-    return 0
-
-
-def f_estadistica_av(param_data):
-    """
-    Parameters
-    ---------
-    :param param_archivo: str : nombre de archivo leer
-
-    Returns
-    ---------
-    :return: df_data: DataFrame
-
-    Debuggin
-    ---------
-    param_archivo = 'archivo_tradeview_1.xlsx'
-
-    """
-
-    return 0
 
 
 
