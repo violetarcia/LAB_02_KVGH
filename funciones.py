@@ -150,7 +150,7 @@ def f_columna_pips(param_data):
     Parameters
     ---------
     :param:
-        param_archivo: str : nombre de archivo leer
+        param_data: DataFrame : archivo de operaciones
 
     Returns
     ---------
@@ -159,7 +159,7 @@ def f_columna_pips(param_data):
 
     Debuggin
     ---------
-        param_archivo = f_leer_archivo('archivo_tradeview_1.xlsx')
+        param_data = f_leer_archivo('archivo_tradeview_1.xlsx')
 
     """
     # Agregar pips
@@ -210,7 +210,7 @@ def f_estadistica_ba(param_data):
     Parameters
     ---------
     :param 
-        param_archivo: DataFrame : archivo
+        param_archivo: DataFrame : archivo de operaciones
 
     Returns
     ---------
@@ -220,7 +220,7 @@ def f_estadistica_ba(param_data):
 
     Debuggin
     ---------
-        param_archivo = f_leer_archivo('archivo_tradeview_1.xlsx')
+        param_data = f_leer_archivo('archivo_tradeview_1.xlsx')
 
     """
     df_1_tabla = pd.DataFrame(
@@ -342,15 +342,54 @@ def f_estadistica_ba(param_data):
 #%%
 # PART III
 
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  FUNCION: Capital acumulado - #
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+'''Funcion
+    Es la columna de evolución de capital en la cuenta de trading, inicializala con 5,000 Usd 
+    y va sumando (restando) las ganancias (perdidas) de la columna 'profit_acm'.
+'''
 def f_columna_capital_acm(param_data):
+    """
+    Parameters
+    ---------
+    :param: 
+        param_data: DataFrame : archivo de operaciones
+
+    Returns
+    ---------
+    :return: 
+        param_data: DataFrame : archivo de operaciones
+
+    Debuggin
+    ---------
+        param_data = f_leer_archivo('archivo_tradeview_1.xlsx')
+    """
     
     param_data['capital_acm'] = [float(5000.0 + param_data['profit_acm'][i]) for i in range(len(param_data['profit_acm']))]
     
     return param_data
 
 
-
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - FUNCION: Profit diarios - #
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+'''Funcion para sacar las perdidas o ganacias diarias
+'''
 def f_profit_diario(param_data):
+    """
+    Parameters
+    ---------
+    :param 
+        param_data: DataFrame : archivo
+
+    Returns
+    ---------
+    :return: 
+        df_profit: DataFrame
+
+    Debuggin
+    ---------
+        param_data = f_leer_archivo('archivo_tradeview_1.xlsx')
+    """
  
     dates = pd.DataFrame(
             {
@@ -367,14 +406,75 @@ def f_profit_diario(param_data):
                                         (param_data['closetime']).normalize())))], 
         columns = ['timestamp', 'profit_d'])
         
-    df = dates.merge(profit_d, how='outer', sort = True).fillna(0)
+    df_profit = dates.merge(profit_d, how='outer', sort = True).fillna(0)
 
-    df['profit_acm'] = round(5000.0 + np.cumsum(df['profit_d']), 2)
+    df_profit['profit_acm'] = round(5000.0 + np.cumsum(df_profit['profit_d']), 2)
         
-    return df
+    return df_profit
 
 
+# - - - - - - - - - - - - - - - - - - - - - FUNCION: Columna de rendimientos logaritmicos - #
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+'''Funcion para calcular rendimientos diarios: 
+'''
+def log_dailiy_rends(param_profit):
+    """
+    Parameters
+    ---------
+    :param 
+        param_profit: DataFrame : archivo
 
+    Returns
+    ---------
+    :return: 
+        df: DataFrame
+
+    Debuggin
+    ---------
+        param_data = f_leer_archivo('archivo_tradeview_1.xlsx')
+    """
+    param_profit['rends'] = np.log(
+                param_profit['profit_acm']/
+                param_profit['profit_acm'].shift(1)).iloc[1:]
+    
+    return param_profit
+
+
+# - - - - - - - - - - - - - - - - - - - - - - FUNCION: Medidas de Atribución al Desempeño - #
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+'''Funcion para sacar las Medidas de Atribución al Desempeño
+    1.- Sharpe Ratio: (rp - rf)/std
+    2.- Sortino Ratio: (rp - rf)/std(-)
+'''
+def f_estadisticas_mad(param_profit):
+    
+    rp = param_profit['rends']
+    rf = 0.08
+    
+    df_estadistic = pd.DataFrame(
+            {
+                    'Sharpe':
+                        [(rp.mean() - rf)/rp.std()],
+                        
+                    'Sortino_c':
+                        [(rp.mean() - rf)/rp[rp < 0].std()],
+                        
+                    'Sortino_v':
+                        [(rp.mean() - rf)/rp[rp > 0].std()],
+                        
+                    'Drawdown_capi_c':
+                        [0],
+                    
+                    'Drawdown_capi_u':
+                        [0],
+                        
+                    'Information':
+                        [0]
+                        
+                        }
+                )
+                        
+    return df_estadistic.T
 
     
     
@@ -385,10 +485,3 @@ def f_profit_diario(param_data):
 
 
 
-
-
-
-#df1, df2 = temp.align(df, axis=1, fill_value=0)
-#df1 = np.where(temp['timestamp'] == df['timestamp'], 1, 0)
-#temp.assign(age_2=df2.loc[df1.index],cond=df1.age < df2.loc[df1.index].age)
-#df1 = list(pd.concat([temp, df]) .groupby(['timestamp']) )

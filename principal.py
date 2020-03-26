@@ -23,12 +23,17 @@ fn.f_columna_pips(datos)
 # DataFrames de Estadisticas basicas y ranking
 df_1_tabla, df_2_ranking = fn.f_estadistica_ba(datos)
 
+
 # -- PART III --
 
 # Agregar capital acumulado
 fn.f_columna_capital_acm(datos)
 
-# DataFrames de profits
-
+# DataFrame de profits
 df_profit = fn.f_profit_diario(datos)
 
+# Agregar rendimientos 
+fn.log_dailiy_rends(df_profit)
+
+# Estadisticas de metricas de desempeño
+df_estadistic = fn.f_estadisticas_mad(df_profit)
