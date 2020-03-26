@@ -338,8 +338,57 @@ def f_estadistica_ba(param_data):
     return df_1_tabla, df_2_ranking
 
 
+# - - - - - - - - - - - - - - - - - - - - - - -
+#%%
+# PART III
+
+def f_columna_capital_acm(param_data):
+    
+    param_data['capital_acm'] = [float(5000.0 + param_data['profit_acm'][i]) for i in range(len(param_data['profit_acm']))]
+    
+    return param_data
+
+
+
+def f_profit_diario(param_data):
+ 
+    dates = pd.DataFrame(
+            {
+            'timestamp' :   (pd.date_range(param_data['closetime'].min(), 
+              param_data['closetime'].max(), normalize = True))
+            }
+        )
+
+    profit_d = pd.DataFrame(
+                [
+                    [i[0], 
+                     round(sum(i[1]['profit']), 2)
+              ] for i in (list(param_data.groupby(pd.DatetimeIndex
+                                        (param_data['closetime']).normalize())))], 
+        columns = ['timestamp', 'profit_d'])
+        
+    df = dates.merge(profit_d, how='outer', sort = True).fillna(0)
+
+    df['profit_acm'] = round(5000.0 + np.cumsum(df['profit_d']), 2)
+        
+    return df
+
+
+
+
+    
+    
 
 
 
 
 
+
+
+
+
+
+#df1, df2 = temp.align(df, axis=1, fill_value=0)
+#df1 = np.where(temp['timestamp'] == df['timestamp'], 1, 0)
+#temp.assign(age_2=df2.loc[df1.index],cond=df1.age < df2.loc[df1.index].age)
+#df1 = list(pd.concat([temp, df]) .groupby(['timestamp']) )

@@ -9,6 +9,8 @@
 import funciones as fn
 import pandas as pd
 
+# -- PART II --
+
 # Leer archivo (el de Francisco es el 2)
 datos = fn.f_leer_archivo('archivo_tradeview_2.xlsx')
 
@@ -18,6 +20,15 @@ fn.f_columnas_tiempos(datos)
 # Agregar columna de pips
 fn.f_columna_pips(datos)
 
-# Ver Estadisticas basicas y ranking
+# DataFrames de Estadisticas basicas y ranking
 df_1_tabla, df_2_ranking = fn.f_estadistica_ba(datos)
+
+# -- PART III --
+
+# Agregar capital acumulado
+fn.f_columna_capital_acm(datos)
+
+# DataFrames de profits
+
+df_profit = fn.f_profit_diario(datos)
 
