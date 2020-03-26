@@ -41,9 +41,6 @@ def f_leer_archivo(param_archivo):
     # Convertir en minusculas el nombre de las columnas
     df_data.columns = [df_data.columns[i].lower() for i in range(len(df_data.columns))]
 
-    # Elegir solo renglones en los que la columna type == buy | type == sell
-    #df_data.columns = [df_data[i] for i in range(len(df_data)) if df_data[i] == 'buy' or df_data[i] == 'sell' ]
-
     # Asegurar que ciertas columnas son del tipo numerico
     num_col = ['order', 'size', 'openprice', 's/l', 't/p', 'closeprice', 'taxes', 'swap', 'profit']
     df_data[num_col] = df_data[num_col].apply(pd.to_numeric)
@@ -164,11 +161,8 @@ def f_columna_pips(param_data):
     """
     # Agregar pips
     param_data['pips'] = [
-            (param_data.closeprice[i] - param_data.openprice[i])*f_pip_size(
-                    param_data.symbol[i])
-            if param_data.type[i] == 'buy' 
-            else - (param_data.closeprice[i] - param_data.openprice[i])*f_pip_size(
-                    param_data.symbol[i])
+            (param_data['closeprice'][i] - param_data['openprice'][i])*f_pip_size(
+                    param_data['symbol'][i])
         for i in range(len(param_data))
         ]
     
@@ -198,11 +192,11 @@ def f_columna_pips(param_data):
         Perdedoras_c	  19	Operaciones perdedoras de compra
         Perdedoras_v	  19	Operaciones perdedoras de venta
         Media (Profit)	1.205	Mediana de profit de operaciones   
-        Media (Pips)	   3	Mediana de pips de operaciones
-        r_efectividad	1.83	Ganadoras Totales/Operaciones Totales
-        r_proporcion	1.21	Perdedoras Totales/Ganadoras Totales
-        r_efectividad_c	  4.2	Ganadoras Compras/Operaciones Totales
-        r_efectividad_v	3.23	Ganadoras Ventas/ Operaciones Totales
+        *Media (Pips)	   3	Mediana de pips de operaciones
+        r_efectividad	  0.55 	Ganadoras Totales/Operaciones Totales
+        r_proporcion	  1.21	Perdedoras Totales/Ganadoras Totales
+        r_efectividad_c	  0.24	Ganadoras Compras/Operaciones Totales
+        r_efectividad_v	  0.31	Ganadoras Ventas/ Operaciones Totales
         - - - - - - - - - - - - - - - - - - - -
 '''
 def f_estadistica_ba(param_data):
@@ -233,37 +227,37 @@ def f_estadistica_ba(param_data):
                     
                     'Ganadoras':
                         [
-                                len(param_data[param_data['pips_acm'] > 0]), 
+                                len(param_data[param_data['profit'] >= 0]), 
                                 'Operaciones ganadoras'
                                 ], 
                         
                     'Ganadoras_c':
                         [
-                                len([(param_data['type'] == 'buy') & (param_data['pips_acm'] > 0)]), 
+                                len(param_data[(param_data['type'] == 'buy') & (param_data['profit'] >= 0)]), 
                                 'Operaciones ganadoras de compra'
                                 ],
                         
                     'Ganadoras_v':
                         [
-                                len(param_data[(param_data['type'] == 'sell') & (param_data['pips_acm'] > 0)]), 
+                                len(param_data[(param_data['type'] == 'sell') & (param_data['profit'] >= 0)]), 
                                 'Operaciones ganadoras de venta'
                                 ],
                         
                     'Perdedoras':
                         [
-                                len(param_data[param_data['pips_acm'] < 0]), 
+                                len(param_data[param_data['profit'] <= 0]), 
                                 'Operaciones perdedoras'
                                 ],
                         
                     'Perdedoras_c':
                         [
-                                len(param_data[(param_data['type'] == 'buy') & (param_data['pips_acm'] < 0)]), 
+                                len(param_data[(param_data['type'] == 'buy') & (param_data['profit'] <= 0)]), 
                                 'Operaciones perdedoras de compra'
                                 ],
                         
                     'Perdedoras_v':
                         [
-                                len(param_data[(param_data['type'] == 'sell') & (param_data['pips_acm'] < 0)]), 
+                                len(param_data[(param_data['type'] == 'sell') & (param_data['profit'] <= 0)]), 
                                 'Operaciones perdedoras de venta'
                                 ],
                         
@@ -275,35 +269,35 @@ def f_estadistica_ba(param_data):
                         
                     'Media (Pips)':
                         [
-                                param_data['pips_acm'].median(), 
+                                param_data['pips'].median(), 
                                 'Mediana de pips de las operaciones'
                                 ],
                         
                     'r_efectividad':
                         [
-                                len(param_data[param_data['pips_acm'] > 0]) / 
+                                len(param_data[param_data['profit'] > 0]) / 
                                 len(param_data['order']),
                                 'Ganadoras Totales/Operaciones Totales'
                                 ],
                         
                     'r_proporcion':
                         [
-                                len(param_data[param_data['pips_acm'] > 0]) / 
-                                len(param_data[param_data['pips_acm'] < 0]),
+                                len(param_data[param_data['profit'] > 0]) / 
+                                len(param_data[param_data['profit'] < 0]),
                                 'Ganadoras Totales/ Perdedoras Totales'
                                 ],
                         
                     'r_efectividad_c':
                         [
-                                len(param_data[(param_data['type'] == 'buy') & (param_data['pips_acm'] > 0)]) /
-                                len(param_data[param_data['type']=='buy']),
+                                len(param_data[(param_data['type'] == 'buy') & (param_data['profit'] >= 0)]) /
+                                len(param_data['order']),
                             'Ganadoras Compras/ Operaciones Totales'
                             ],
                         
                     'r_efectividad_v':
                         [
-                                len(param_data[(param_data['type'] == 'sell') & (param_data['pips_acm'] > 0)]) /
-                                len(param_data[param_data['type'] == 'sell']),
+                                len(param_data[(param_data['type'] == 'sell') & (param_data['profit'] >= 0)]) /
+                                len(param_data['order']),
                             'Ganadoras Ventas/ Operaciones Totales'
                             ]
                 },
@@ -449,7 +443,8 @@ def log_dailiy_rends(param_profit):
 def f_estadisticas_mad(param_profit):
     
     rp = param_profit['rends']
-    rf = 0.08
+    rf = 0.08/12
+    benchmark = 0.10
     
     df_estadistic = pd.DataFrame(
             {
@@ -463,13 +458,13 @@ def f_estadisticas_mad(param_profit):
                         [(rp.mean() - rf)/rp[rp > 0].std()],
                         
                     'Drawdown_capi_c':
-                        [0],
+                        [1 - param_profit['profit_acm'].min()/5000],
                     
                     'Drawdown_capi_u':
-                        [0],
+                        [1 - param_profit['profit_acm'].max()/5000],
                         
                     'Information':
-                        [0]
+                        [rp.mean() / benchmark]
                         
                         }
                 )
