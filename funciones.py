@@ -7,7 +7,7 @@
 # -- ------------------------------------------------------------------------------------ -- #
 import pandas as pd
 import numpy as np
-
+import datos as dat
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - FUNCION: Leer archivo - #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
@@ -76,11 +76,11 @@ def f_pip_size(param_ins):
     ---------
 
     """
-    # transformar a minusculas
-    inst = param_ins.lower()
+    # Minusculas
+    instrument = param_ins.lower()
 
     # lista de pips por instrumento
-    pips_inst = {
+    pips_instrument = {
                 'usdjpy': 100, 'gbpjpy': 100, 'eurjpy': 100, 'cadjpy': 100,
                  'chfjpy': 100,'eurusd': 10000, 'gbpusd': 10000, 'usdcad': 10000, 
                  'usdmxn': 10000,'audusd': 10000, 'nzdusd': 10000, 'usdchf': 10000,
@@ -89,7 +89,7 @@ def f_pip_size(param_ins):
                  'nzdcad': 10000, 'audcad': 10000, 'xauusd': 10, 'xagusd': 10, 'btcusd': 1
                  }
 
-    return pips_inst[inst]
+    return pips_instrument[instrument]
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  FUNCION: Tiempo de operacion - #
@@ -122,13 +122,13 @@ def f_columnas_tiempos(param_data):
     param_data['opentime'] = pd.to_datetime(param_data['opentime'])
 
     # Tiempo entre el transcurso de la operacion
-    param_data['time'] = [(param_data.loc[i, 'closetime'] - param_data.loc[i, 'opentime']).delta
+    param_data['time'] = [(param_data.loc[i, 'closetime'] - param_data.loc[i, 'opentime']).delta/ 1e9
                             for i in range(len(param_data['closetime']))]
 
     return param_data
 
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - FUNCION: Visitas en el tiempo - #
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - FUNCION: Columna de pip - #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 
 '''f_columnas_pips: Agregar nuevas columnas: 
@@ -203,7 +203,7 @@ def f_estadistica_ba(param_data):
     """
     Parameters
     ---------
-    :param 
+    :param:
         param_archivo: DataFrame : archivo de operaciones
 
     Returns
@@ -359,7 +359,8 @@ def f_columna_capital_acm(param_data):
         param_data = f_leer_archivo('archivo_tradeview_1.xlsx')
     """
     
-    param_data['capital_acm'] = [float(5000.0 + param_data['profit_acm'][i]) for i in range(len(param_data['profit_acm']))]
+    param_data['capital_acm'] = [float(dat.cap + param_data['profit_acm'][i]) 
+                                    for i in range(len(param_data['profit_acm']))]
     
     return param_data
 
@@ -372,8 +373,8 @@ def f_profit_diario(param_data):
     """
     Parameters
     ---------
-    :param 
-        param_data: DataFrame : archivo
+    :param:
+        param_data: DataFrame : archivo con operaciones
 
     Returns
     ---------
@@ -384,48 +385,52 @@ def f_profit_diario(param_data):
     ---------
         param_data = f_leer_archivo('archivo_tradeview_1.xlsx')
     """
- 
+    # Todas las fechas del rango desde que se cerro la pirmera hasta la ultima
     dates = pd.DataFrame(
             {
             'timestamp' :   (pd.date_range(param_data['closetime'].min(), 
               param_data['closetime'].max(), normalize = True))
             }
         )
-
+            
+    # Agrupar y sumar profit por dia
     profit_d = pd.DataFrame(
-                [
+                [   # Fecha del dia
                     [i[0], 
+                     # Suma del profit de las operaciones cerradas en el dia
                      round(sum(i[1]['profit']), 2)
               ] for i in (list(param_data.groupby(pd.DatetimeIndex
                                         (param_data['closetime']).normalize())))], 
         columns = ['timestamp', 'profit_d'])
-        
+    
+    # Merge todas la fechas con aquellas en las que se hicieron operaciones
     df_profit = dates.merge(profit_d, how='outer', sort = True).fillna(0)
-
-    df_profit['profit_acm'] = round(5000.0 + np.cumsum(df_profit['profit_d']), 2)
+    
+    # Agregar el profit acumulado diario
+    df_profit['profit_acm'] = round(dat.cap + np.cumsum(df_profit['profit_d']), 2)
         
     return df_profit
 
 
 # - - - - - - - - - - - - - - - - - - - - - FUNCION: Columna de rendimientos logaritmicos - #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
-'''Funcion para calcular rendimientos diarios: 
+'''Funcion para calcular rendimientos logaritmicos diarios: 
 '''
 def log_dailiy_rends(param_profit):
     """
     Parameters
     ---------
-    :param 
-        param_profit: DataFrame : archivo
+    :param:
+        param_profit: DataFrame : rendimientos de las operaciones diarias
 
     Returns
     ---------
     :return: 
-        df: DataFrame
+        param_profit: DataFrame
 
     Debuggin
     ---------
-        param_data = f_leer_archivo('archivo_tradeview_1.xlsx')
+        param_profit = f_profit_diario(f_leer_archivo('archivo_tradeview_1.xlsx'))
     """
     param_profit['rends'] = np.log(
                 param_profit['profit_acm']/
@@ -441,27 +446,47 @@ def log_dailiy_rends(param_profit):
     2.- Sortino Ratio: (rp - rf)/std(-)
 '''
 def f_estadisticas_mad(param_profit):
-    
+    """
+    Parameters
+    ---------
+    :param:
+        param_profit: DataFrame : rendimientos de las operaciones diarias
+
+    Returns
+    ---------
+    :return: 
+        df_estadistic: DataFrame
+
+    Debuggin
+    ---------
+        param_profit = f_profit_diario(f_leer_archivo('archivo_tradeview_1.xlsx'))
+    """
+    # Rendimientos
     rp = param_profit['rends']
-    rf = 0.08/12
-    benchmark = 0.10
     
+    # -- DATOS --
+    # Tasa libre de riesgo
+    rf = dat.rf
+    # Benchmark
+    benchmark = dat.benchmark
+    
+    # Crear DataFrame con estadisticas
     df_estadistic = pd.DataFrame(
             {
                     'Sharpe':
-                        [(rp.mean() - rf)/rp.std()],
+                        [(rp.mean()*360 - rf) / (rp.std()*(360)**0.5)],
                         
                     'Sortino_c':
-                        [(rp.mean() - rf)/rp[rp < 0].std()],
+                        [(rp.mean()*360 - rf) / (rp[rp < 0].std()*(360)**0.5)],
                         
                     'Sortino_v':
-                        [(rp.mean() - rf)/rp[rp > 0].std()],
+                        [(rp.mean()*360 - rf) / (rp[rp > 0].std()*(360)**0.5)],
                         
                     'Drawdown_capi_c':
-                        [1 - param_profit['profit_acm'].min()/5000],
+                        [1 - param_profit['profit_acm'].min()/dat.cap],
                     
                     'Drawdown_capi_u':
-                        [1 - param_profit['profit_acm'].max()/5000],
+                        [1 - param_profit['profit_acm'].max()/dat.cap],
                         
                     'Information':
                         [rp.mean() / benchmark]
@@ -472,8 +497,57 @@ def f_estadisticas_mad(param_profit):
     return df_estadistic.T
 
     
-    
+# - - - - - - - - - - - - - - - - - - - - - - -
+#%%
+# PART IV
 
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  FUNCION: Sesgos cognitivos - #
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+'''Funcion
+    Diseñar y calcular una función para obtener evidencia sobre 
+    la presencia de sesgos cognitivos en un trader
+'''
+def f_sesgos_cognitivo(param_data):
+    """
+    Parameters
+    ---------
+    :param: 
+        param_data: DataFrame : archivo de operaciones
+
+    Returns
+    ---------
+    :return: 
+        param_data: DataFrame : archivo de operaciones
+
+    Debuggin
+    ---------
+        param_data = f_leer_archivo('archivo_tradeview_1.xlsx')
+    """
+    
+    param_data['profit/cap'] = [(param_data['profit'][i]/dat.cap)*100 if i == 0 else 
+                       ( param_data['profit'][i]/param_data['capital_acm'][i-1])*100
+                        for i in range(len(param_data['profit']))]
+    
+    df_winners = param_data[param_data['profit'] > 0]
+    df_winners.reset_index(inplace = True) 
+    
+    df_loosers = param_data[param_data['profit'] <= 0]
+    df_loosers.reset_index(inplace = True) 
+    
+    dentro = [[df_loosers.iloc[i,:] for i in range(len(df_loosers)) if 
+              df_loosers['opentime'][i] > df_winners['opentime'][j]  and 
+              df_winners['closetime'][j] > df_loosers['closetime'][i]] for j in range(len(df_winners))]
+    
+    ans = [df_loosers, df_winners]
+    return ans, dentro
+
+'''
+    Principio I : Proporcion de la ganadora y perdedora respecto al capital
+        - Calcular ratio ganadora/capital, perdedora/capital
+    Principio II : Proporcion perdedora / ganadora > 1.5
+        - Ancla sera ganadoras. DF con ganadoras
+    
+'''
 
 
 
