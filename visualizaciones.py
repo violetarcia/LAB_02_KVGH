@@ -8,10 +8,9 @@
 
 
 import matplotlib.pyplot as plt
-import numpy as np
-from principal import df_profit
+from principal import df_profit, temp
 
-
+#%%
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 # Grafica del capital acumulado a traves del tiempo
 
@@ -26,4 +25,15 @@ plt.ylabel('Capital')
 plt.show()
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
- 
+#%%
+
+
+
+
+
+
+
+
+
+
+

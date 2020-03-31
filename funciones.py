@@ -10,7 +10,9 @@ import oandapyV20.endpoints.instruments as instruments
 import pandas as pd
 import numpy as np
 import datos as dat
+
 #%%
+# PART II
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - FUNCION: Leer archivo - #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 
@@ -161,8 +163,11 @@ def f_columna_pips(param_data):
     """
     # Agregar pips
     param_data['pips'] = [
-            (param_data['closeprice'][i] - param_data['openprice'][i])*f_pip_size(
-                    param_data['symbol'][i])
+            (param_data.closeprice[i] - param_data.openprice[i])*f_pip_size(
+                    param_data.symbol[i])
+            if param_data.type[i] == 'buy' 
+            else - (param_data.closeprice[i] - param_data.openprice[i])*f_pip_size(
+                    param_data.symbol[i])
         for i in range(len(param_data))
         ]
     
@@ -416,7 +421,7 @@ def f_profit_diario(param_data):
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 '''Funcion para calcular rendimientos logaritmicos diarios: 
 '''
-def log_dailiy_rends(param_profit):
+def log_dailiy_rends(param_profit, col):
     """
     Parameters
     ---------
@@ -433,8 +438,34 @@ def log_dailiy_rends(param_profit):
         param_profit = f_profit_diario(f_leer_archivo('archivo_tradeview_1.xlsx'))
     """
     param_profit['rends'] = np.log(
-                param_profit['profit_acm']/
-                param_profit['profit_acm'].shift(1)).iloc[1:]
+                param_profit[col]/
+                param_profit[col].shift(1)).iloc[1:]
+    
+    return param_profit
+
+
+# - - - - - - - - - - - - - - - - - - - - - FUNCION: Columna de rendimientos logaritmicos - #
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+'''Funcion para calcular drawdown: 
+'''
+def drawdown(param_profit, col):
+    """
+    Parameters
+    ---------
+    :param:
+        param_profit: DataFrame : rendimientos de las operaciones diarias
+
+    Returns
+    ---------
+    :return: 
+        param_profit: DataFrame
+
+    Debuggin
+    ---------
+        param_profit = f_profit_diario(f_leer_archivo('archivo_tradeview_1.xlsx'))
+    """
+    param_profit['down'] = (param_profit[col] - param_profit[col].cummax())
+    param_profit['up'] = param_profit[col].cummax()
     
     return param_profit
 
@@ -466,7 +497,7 @@ def f_estadisticas_mad(param_profit):
     
     # -- DATOS --
     # Tasa libre de riesgo
-    rf = dat.rf
+    rf = dat.rf/360
     # Benchmark
     benchmark = dat.benchmark
     
@@ -474,13 +505,13 @@ def f_estadisticas_mad(param_profit):
     df_estadistic = pd.DataFrame(
             {
                     'Sharpe':
-                        [(rp.mean()*360 - rf) / (rp.std()*(360)**0.5)],
+                        [(rp.mean() - rf) / rp.std()],
                         
                     'Sortino_c':
-                        [(rp.mean()*360 - rf) / (rp[rp < 0].std()*(360)**0.5)],
+                        [(rp.mean() - rf) / (rp[rp < 0].std())],
                         
                     'Sortino_v':
-                        [(rp.mean()*360 - rf) / (rp[rp > 0].std()*(360)**0.5)],
+                        [(rp.mean() - rf) / (rp[rp > 0].std())],
                         
                     'Drawdown_capi_c':
                         [1 - param_profit['profit_acm'].min()/dat.cap],
@@ -588,6 +619,11 @@ def f_sesgos_cognitivo(param_data):
               (param_data['profit'][i]/param_data['capital_acm'][i-1])*100
                         for i in range(len(param_data['profit']))
                         ]
+    
+    param_data['resultado'] = ['ganadora' if param_data['profit'][i] > 0 
+                                           else 'perdedora' 
+                                for i in range(len(param_data['profit']))]
+    
     # Seleccionar solo los ganadores
     df_winners = param_data[param_data['profit'] > 0]
     df_winners.reset_index(inplace = True, drop = True)
@@ -625,21 +661,38 @@ def f_sesgos_cognitivo(param_data):
                 ]
             for j in range(len(pos_ocu_concat))
             ]
+    
+    # Concatenar los precios
+    prec_posibles_ocu = [pd.concat(
+                                [ 
+                                    pos_ocu_concat[i],
+                                     pd.concat(
+                                                 [
+                                                    pd.DataFrame([0], columns=['price_on_close']), 
+                                                    pd.DataFrame(precios[i], columns=['price_on_close'])
+                                                    ], sort=False, ignore_index = True)
+                                    ], axis = 1, sort=False)
+                        for i in range(len(pos_ocu_concat))]
                 
     # Llenar lista con Diccionarios
     df = []
+    k = 0
     for j in range(len(precios)):
         profits, indices = [],  []
         for i in range(len(precios[j])):
-            if precios[j][i] < pos_ocu_concat[j]['openprice'][i+1]:
+            if precios[j][i] < pos_ocu_concat[j]['openprice'][
+                    i+1] and pos_ocu_concat[j]['type'][i+1] == 'buy' or precios[
+                            j][i] > pos_ocu_concat[j]['openprice'][
+                                    i+1] and pos_ocu_concat[j]['type'][i+1] == 'sell':
+                # Guardar el profit para tomar el maximo
                 profits.append(pos_ocu_concat[j]['profit'][i+1])
                 indices.append(i+1)
         #print(profits, indices)
         
         if profits != []:
             ind = profits.index(max(profits))  
-            #print(ind, j, profits)
-            df.append([{ 'ocurrencia %d'%j:
+            k +=1
+            df.append([{ 'ocurrencia %d'%k:
                                 [
                                     { 'timestamp':
                                         [pos_ocu_concat[j]['closetime'][0]],
@@ -656,7 +709,9 @@ def f_sesgos_cognitivo(param_data):
                                                         'sentido':
                                                             [pos_ocu_concat[j]['type'][0]],
                                                         'capital_ganadora':
-                                                            [pos_ocu_concat[j]['capital_acm'][0]]
+                                                            [pos_ocu_concat[j]['capital_acm'][0]],
+                                                        'resultado':
+                                                            [pos_ocu_concat[j]['resultado'][0]]
                                                          }
                                                     ],
                                                      
@@ -670,7 +725,15 @@ def f_sesgos_cognitivo(param_data):
                                                         'sentido':
                                                             [pos_ocu_concat[j]['type'][indices[ind]]],
                                                         'capital_perdedora':
-                                                            [pos_ocu_concat[j]['capital_acm'][indices[ind]]]
+                                                            [pos_ocu_concat[j]['capital_acm'][indices[ind]]],
+                                                        'resultado':
+                                                            [pos_ocu_concat[j]['resultado'][indices[ind]]],
+                                                        'precio_apertura':
+                                                            [pos_ocu_concat[j]['openprice'][indices[ind]]],
+                                                        'precio_cierre':
+                                                            [pos_ocu_concat[j]['closeprice'][indices[ind]]],
+                                                        'precio_on_close':
+                                                            [prec_posibles_ocu[j]['price_on_close'][indices[ind]]]
                                                            
                                                             }
                                                        ]
@@ -686,24 +749,12 @@ def f_sesgos_cognitivo(param_data):
                 
     return df
 
+
 #%%
 
-                    
-#%%
 
 
 
-
-
-
-
-         
-
-
-
-
-
-#2019-08-27 09:16:01
 
 
 
