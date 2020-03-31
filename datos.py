@@ -19,3 +19,6 @@ mar = 0.3
 
 # Benchmark
 benchmark = 0.10
+
+# OANDA
+OANDA_ACCESS_TOKEN = '800f1b3f91d7cb0a713c532e17823f6d-f9acd6a21490f97aef649dfd8e723435'

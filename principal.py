@@ -37,10 +37,12 @@ fn.log_dailiy_rends(df_profit)
 # Estadisticas de metricas de desempeño
 df_profit_estad = fn.f_estadisticas_mad(df_profit)
 
-
+#%%
 # -- PART IV --
 
-los_win, operac = fn.f_sesgos_cognitivo(datos)
+operaciones = fn.f_sesgos_cognitivo(datos)
 
 porcentaje = abs(sum(datos[datos['profit/cap'] > 0]['profit/cap']) /
              sum(datos[datos['profit/cap'] < 0]['profit/cap']))
+
+

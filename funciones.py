@@ -5,10 +5,12 @@
 # -- mantiene: violetarcia
 # -- repositorio: https://github.com/violetarcia/LAB_02_KVGH.git
 # -- ------------------------------------------------------------------------------------ -- #
+from oandapyV20 import API                                
+import oandapyV20.endpoints.instruments as instruments
 import pandas as pd
 import numpy as np
 import datos as dat
-
+#%%
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - FUNCION: Leer archivo - #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 
@@ -76,8 +78,6 @@ def f_pip_size(param_ins):
     ---------
 
     """
-    # Minusculas
-    instrument = param_ins.lower()
 
     # lista de pips por instrumento
     pips_instrument = {
@@ -89,7 +89,7 @@ def f_pip_size(param_ins):
                  'nzdcad': 10000, 'audcad': 10000, 'xauusd': 10, 'xagusd': 10, 'btcusd': 1
                  }
 
-    return pips_instrument[instrument]
+    return pips_instrument[param_ins.lower()]
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  FUNCION: Tiempo de operacion - #
@@ -443,7 +443,7 @@ def log_dailiy_rends(param_profit):
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 '''Funcion para sacar las Medidas de Atribución al Desempeño
     1.- Sharpe Ratio: (rp - rf)/std
-    2.- Sortino Ratio: (rp - rf)/std(-)
+    2.- Sortino Ratio: (rp - mar)/std(-)
 '''
 def f_estadisticas_mad(param_profit):
     """
@@ -500,12 +500,71 @@ def f_estadisticas_mad(param_profit):
 # - - - - - - - - - - - - - - - - - - - - - - -
 #%%
 # PART IV
+    
+def f_precios(param_instrument, date):
+    """
+    Parameters
+    ---------
+    :param: 
+        instrument: str : instrumento del precio que se requiere
+        date : date : fecha del dia del precio
+
+    Returns
+    ---------
+    :return: 
+        float: precio del intrumento en tal fecha
+
+    Debuggin
+    ---------
+        instrument = 'EUR_USD'
+        date = pd.to_datetime("2019-07-06 00:00:00")
+    """ 
+    # Inicializar api de OANDA
+    api = API(environment = "practice", access_token = dat.OANDA_ACCESS_TOKEN)
+    # Convertir en string la fecha
+    fecha = date.strftime('%Y-%m-%dT%H:%M:%S')
+    # Parametros
+    parameters = {"count": 1, "granularity": 'M1', "price": "M", "dailyAlignment": 16, "from": fecha}
+    # Definir el instrumento del que se quiere el precio
+    r = instruments.InstrumentsCandles(instrument = param_instrument, params = parameters)
+    # Descargarlo de OANDA
+    response = api.request(r)
+    # En fomato candles 'open, low, high, close'
+    prices = response.get("candles")
+    # Regresar el precio de apertura
+    return float(prices[0]['mid']['o'])
+
+
+def f_instrument(ins):
+    """
+    Parameters
+    ---------
+    :param: 
+        ins: str : instrumento del precio que se requiere
+
+    Returns
+    ---------
+    :return: 
+        str: intrumento en formato 'EUR_USD'
+
+    Debuggin
+    ---------
+        instrument = 'eurusd'
+    """ 
+    return ins.upper()[:3] + '_' + ins.upper()[3:]
+
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  FUNCION: Sesgos cognitivos - #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 '''Funcion
     Diseñar y calcular una función para obtener evidencia sobre 
     la presencia de sesgos cognitivos en un trader
+    - - - - - - - -
+    Principio I : Proporcion de la ganadora y perdedora respecto al capital
+        - Calcular ratio ganadora/capital, perdedora/capital
+    Principio II : Proporcion perdedora / ganadora > 1.5
+        - Ancla sera ganadoras. DF con ganadoras
+    
 '''
 def f_sesgos_cognitivo(param_data):
     """
@@ -524,30 +583,127 @@ def f_sesgos_cognitivo(param_data):
         param_data = f_leer_archivo('archivo_tradeview_1.xlsx')
     """
     
-    param_data['profit/cap'] = [(param_data['profit'][i]/dat.cap)*100 if i == 0 else 
-                       ( param_data['profit'][i]/param_data['capital_acm'][i-1])*100
-                        for i in range(len(param_data['profit']))]
-    
+    param_data['profit/cap'] = [
+              (param_data['profit'][i]/dat.cap)*100 if i == 0 else 
+              (param_data['profit'][i]/param_data['capital_acm'][i-1])*100
+                        for i in range(len(param_data['profit']))
+                        ]
+    # Seleccionar solo los ganadores
     df_winners = param_data[param_data['profit'] > 0]
-    df_winners.reset_index(inplace = True) 
+    df_winners.reset_index(inplace = True, drop = True)
     
-    df_loosers = param_data[param_data['profit'] <= 0]
-    df_loosers.reset_index(inplace = True) 
+    # De operaciones ganadores, buscar operaciones abiertas cuando se cerraron
+    posibles_ocurrencias = [
+                [
+                        param_data.iloc[i,:] for i in range(len(param_data)) if 
+              param_data['opentime'][i] < df_winners['opentime'][j]  and 
+              param_data['closetime'][i] > df_winners['closetime'][j] or
+              df_winners['closetime'][j] > param_data['opentime'][i] > df_winners['opentime'][j] and
+              param_data['closetime'][i] > df_winners['closetime'][j]
+                    ]
+                for j in range(len(df_winners))
+                ]
     
-    dentro = [[df_loosers.iloc[i,:] for i in range(len(df_loosers)) if 
-              df_loosers['opentime'][i] > df_winners['opentime'][j]  and 
-              df_winners['closetime'][j] > df_loosers['closetime'][i]] for j in range(len(df_winners))]
+    # Concatenar para tenerlo en un solo DF, donde el primero es la operacion ancla
+    pos_ocu_concat = [pd.concat(
+                                    [ # Operacion ganadora
+                                        df_winners.iloc[i, :], 
+                                      # Operaciones abiertas
+                                        pd.concat(posibles_ocurrencias[i], axis = 1)
+                                        ], 
+                    axis = 1, sort=False, ignore_index = True).T
+                        for i in range(len(posibles_ocurrencias)) if posibles_ocurrencias[i] != []]
     
-    ans = [df_loosers, df_winners]
-    return ans, dentro
+    # Descargar precios de acuerdo al closetime de la primera operacion (la ganadora)          
+    precios = [
+                [
+                f_precios(
+                    f_instrument(pos_ocu_concat[j]['symbol'][i+1]), 
+                    pos_ocu_concat[j]['closetime'][0]
+                    )
+                for i in range(len(pos_ocu_concat[j]) - 1)
+                ]
+            for j in range(len(pos_ocu_concat))
+            ]
+                
+    # Llenar lista con Diccionarios
+    df = []
+    for j in range(len(precios)):
+        profits, indices = [],  []
+        for i in range(len(precios[j])):
+            if precios[j][i] < pos_ocu_concat[j]['openprice'][i+1]:
+                profits.append(pos_ocu_concat[j]['profit'][i+1])
+                indices.append(i+1)
+        #print(profits, indices)
+        
+        if profits != []:
+            ind = profits.index(max(profits))  
+            #print(ind, j, profits)
+            df.append([{ 'ocurrencia %d'%j:
+                                [
+                                    { 'timestamp':
+                                        [pos_ocu_concat[j]['closetime'][0]],
+                                        
+                                      'operaciones':
+                                          [
+                                             { 'ganadora':
+                                                 [
+                                                    {
+                                                        'instrumento':
+                                                            [pos_ocu_concat[j]['symbol'][0]],
+                                                        'profit':
+                                                            [pos_ocu_concat[j]['profit'][0]],
+                                                        'sentido':
+                                                            [pos_ocu_concat[j]['type'][0]],
+                                                        'capital_ganadora':
+                                                            [pos_ocu_concat[j]['capital_acm'][0]]
+                                                         }
+                                                    ],
+                                                     
+                                               'perdedora':
+                                                  [
+                                                    {
+                                                        'instrumento':
+                                                            [pos_ocu_concat[j]['symbol'][indices[ind]]],
+                                                        'profit':
+                                                            [pos_ocu_concat[j]['profit'][indices[ind]]],
+                                                        'sentido':
+                                                            [pos_ocu_concat[j]['type'][indices[ind]]],
+                                                        'capital_perdedora':
+                                                            [pos_ocu_concat[j]['capital_acm'][indices[ind]]]
+                                                           
+                                                            }
+                                                       ]
+                                                  }
+                                             ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        )
+            
+    
+                
+    return df
 
-'''
-    Principio I : Proporcion de la ganadora y perdedora respecto al capital
-        - Calcular ratio ganadora/capital, perdedora/capital
-    Principio II : Proporcion perdedora / ganadora > 1.5
-        - Ancla sera ganadoras. DF con ganadoras
-    
-'''
+#%%
+
+                    
+#%%
+
+
+
+
+
+
+
+         
+
+
+
+
+
+#2019-08-27 09:16:01
 
 
 
