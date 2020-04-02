@@ -43,7 +43,7 @@ fn.drawdown(df_profit, 'profit_acm')
 # Estadisticas de metricas de desempeño
 df_profit_estad = fn.f_estadisticas_mad(df_profit)
 
-#%%
+
 # -- PART IV --
 
 # Operaciones ganadora vs perdedora (ocurrencia)
@@ -53,19 +53,13 @@ operaciones = fn.f_sesgos_cognitivo(data)
 porcentaje = abs(sum(data[data['profit/cap'] > 0]['profit/cap']) /
              sum(data[data['profit/cap'] < 0]['profit/cap']))
 
-# Cuantas ganaron al final y perdieron
-gan_perd = [operaciones[i-1][0]['ocurrencia %d'%i][0]['operaciones'][0]['perdedora'][0]['resultado'] 
-            for i in range(1, len(operaciones))]
-
-# Para ver comparativa
-perdedoras = [0 if gan_perd[i][0] == 'ganadora' else -1 for i in range(len(gan_perd))]
-
-
+# Tiempo
 t1 = time()
+
 print(t1 - t0)
 
 #%%
-temp = df_profit['down'].min()
+
 
 
 

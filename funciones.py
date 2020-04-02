@@ -48,6 +48,10 @@ def f_leer_archivo(param_archivo):
     # Asegurar que ciertas columnas son del tipo numerico
     num_col = ['order', 'size', 'openprice', 's/l', 't/p', 'closeprice', 'taxes', 'swap', 'profit']
     df_data[num_col] = df_data[num_col].apply(pd.to_numeric)
+    
+    # Acomodar por closetime
+    df_data.sort_values(by=['closetime'], inplace = True)
+    df_data.reset_index(inplace = True, drop = True)
 
     return df_data
 
@@ -126,7 +130,7 @@ def f_columnas_tiempos(param_data):
     # Tiempo entre el transcurso de la operacion
     param_data['time'] = [(param_data.loc[i, 'closetime'] - param_data.loc[i, 'opentime']).delta/ 1e9
                             for i in range(len(param_data['closetime']))]
-
+    
     return param_data
 
 
@@ -306,7 +310,7 @@ def f_estadistica_ba(param_data):
                             'Ganadoras Ventas/ Operaciones Totales'
                             ]
                 },
-                index=['Valor', 'Descripcion']
+                index = ['Valor', 'Descripcion']
             ).T
     
     # - - - - - - - - - - - - - - - - - - -
@@ -514,10 +518,10 @@ def f_estadisticas_mad(param_profit):
                         [(rp.mean() - rf) / (rp[rp > 0].std())],
                         
                     'Drawdown_capi_c':
-                        [1 - param_profit['profit_acm'].min()/dat.cap],
+                        [param_profit['down'].min()],
                     
                     'Drawdown_capi_u':
-                        [1 - param_profit['profit_acm'].max()/dat.cap],
+                        [param_profit['up'].max() - dat.cap],
                         
                     'Information':
                         [rp.mean() / benchmark]
@@ -531,6 +535,13 @@ def f_estadisticas_mad(param_profit):
 # - - - - - - - - - - - - - - - - - - - - - - -
 #%%
 # PART IV
+    
+# - - - - - - - - - - - - - - - - - - - - - - FUNCION: Descargar el precio dado timestamp - #
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+'''Funcion para descargar el precio de apertura en dado timestamp
+    Especificar el instrumentos 'eurusd'
+    Y el timestamp pd.to_datetime("2019-08-27 09:16:01").tz_localize('GMT')
+'''
     
 def f_precios(param_instrument, date):
     """
@@ -566,6 +577,13 @@ def f_precios(param_instrument, date):
     return float(prices[0]['mid']['o'])
 
 
+# - - - - - - - - - - - - - - - - - - - - - - - -  FUNCION: Cambiar string para adaptarlo - #
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+'''Funcion que cambia el formato del string del instrumento
+    en el archivo el symbol es de forma 'eurusd'
+    pero para poder descargar el precio de tal es necesario que este en
+    forma de 'EUR_USD', y es lo que hace esta funcion
+'''
 def f_instrument(ins):
     """
     Parameters
@@ -675,86 +693,120 @@ def f_sesgos_cognitivo(param_data):
                         for i in range(len(pos_ocu_concat))]
                 
     # Llenar lista con Diccionarios
-    df = []
+    ocu = []
     k = 0
     for j in range(len(precios)):
+        # Para guardar el profit y tomar el de mayo
         profits, indices = [],  []
         for i in range(len(precios[j])):
+            ''' Si el precio en closetime ganador es menor al precio de apertura 
+                 de la operacion de compra, o que el precio en closetime sea mayor
+                 y la operacion es de tipo venta'''
             if precios[j][i] < pos_ocu_concat[j]['openprice'][
                     i+1] and pos_ocu_concat[j]['type'][i+1] == 'buy' or precios[
                             j][i] > pos_ocu_concat[j]['openprice'][
                                     i+1] and pos_ocu_concat[j]['type'][i+1] == 'sell':
-                # Guardar el profit para tomar el maximo
-                profits.append(pos_ocu_concat[j]['profit'][i+1])
+                
+                # Guardar el profit para tomar el maximo (abs)
+                profits.append((pos_ocu_concat[j]['profit'][i+1]))
+                # Guardar el indice del profit
                 indices.append(i+1)
         #print(profits, indices)
         
         if profits != []:
-            ind = profits.index(max(profits))  
+            ind = profits.index(min(profits))
             k +=1
-            df.append([{ 'ocurrencia %d'%k:
-                                [
+            new_profit = round((prec_posibles_ocu[j]['price_on_close'][indices[ind]] - 
+                                pos_ocu_concat[j]['openprice'][indices[ind]]) *
+                                ((pos_ocu_concat[j]['profit'][indices[ind]]) /
+                                 ( pos_ocu_concat[j]['closeprice'][indices[ind]] - 
+                                  pos_ocu_concat[j]['openprice'][indices[ind]])), 3)
+                            
+            ocu.append({ 'ocurrencia %d'%k:
+                                
                                     { 'timestamp':
-                                        [pos_ocu_concat[j]['closetime'][0]],
+                                        pos_ocu_concat[j]['closetime'][0],
                                         
                                       'operaciones':
-                                          [
+                                          
                                              { 'ganadora':
-                                                 [
+                                                 
                                                     {
                                                         'instrumento':
-                                                            [pos_ocu_concat[j]['symbol'][0]],
-                                                        'profit':
-                                                            [pos_ocu_concat[j]['profit'][0]],
+                                                            pos_ocu_concat[j]['symbol'][0],
                                                         'sentido':
-                                                            [pos_ocu_concat[j]['type'][0]],
+                                                            pos_ocu_concat[j]['type'][0],
+                                                        'volumen':
+                                                            pos_ocu_concat[j]['size'][0],
                                                         'capital_ganadora':
-                                                            [pos_ocu_concat[j]['capital_acm'][0]],
-                                                        'resultado':
-                                                            [pos_ocu_concat[j]['resultado'][0]]
-                                                         }
-                                                    ],
+                                                            pos_ocu_concat[j]['profit'][0],
+                                                         },
                                                      
                                                'perdedora':
-                                                  [
                                                     {
                                                         'instrumento':
-                                                            [pos_ocu_concat[j]['symbol'][indices[ind]]],
-                                                        'profit':
-                                                            [pos_ocu_concat[j]['profit'][indices[ind]]],
+                                                            pos_ocu_concat[j]['symbol'][indices[ind]],
                                                         'sentido':
-                                                            [pos_ocu_concat[j]['type'][indices[ind]]],
+                                                            pos_ocu_concat[j]['type'][indices[ind]],
+                                                        'profit':
+                                                            pos_ocu_concat[j]['profit'][indices[ind]],
                                                         'capital_perdedora':
-                                                            [pos_ocu_concat[j]['capital_acm'][indices[ind]]],
-                                                        'resultado':
-                                                            [pos_ocu_concat[j]['resultado'][indices[ind]]],
-                                                        'precio_apertura':
-                                                            [pos_ocu_concat[j]['openprice'][indices[ind]]],
-                                                        'precio_cierre':
-                                                            [pos_ocu_concat[j]['closeprice'][indices[ind]]],
-                                                        'precio_on_close':
-                                                            [prec_posibles_ocu[j]['price_on_close'][indices[ind]]]
-                                                           
-                                                            }
-                                                       ]
-                                                  }
-                                             ]
+                                                            new_profit
+                                                         }
+                                                 },
+        
+                                      'ratio_cp_capital_acm':
+                                            round(abs(new_profit/pos_ocu_concat[j]['capital_acm'][0])*100, 3),
+                                            
+                                      'ratio_cg_capital_acm': 
+                                            round(abs(pos_ocu_concat[j]['profit'][0]/
+                                             pos_ocu_concat[j]['capital_acm'][0])*100, 3),
+                                      'ratio_cp_cg':
+                                            round(abs(new_profit/pos_ocu_concat[j]['profit'][0])*100, 3)
                                         }
-                                    ]
                                 }
-                            ]
                         )
+                            
             
+    datos = pd.concat([
+            pd.DataFrame([
+            ocu[i-1]['ocurrencia %d'%i]['ratio_cp_capital_acm'],
+            ocu[i-1]['ocurrencia %d'%i]['ratio_cg_capital_acm'],
+            ocu[i-1]['ocurrencia %d'%i]['ratio_cp_cg']
+                    ])
+            for i in range(1, len(ocu)+1)], axis=1, ignore_index = True).T
+    '''
+    - Status_quo:  % de ocurrencias donde capital_perdedora/capital_acm < capital_ganadora/capital_acm.
+    - Aversion_perdida: % de ocurrencias donde capital_perdedora/capital_ganadora es > 1.5 ​
+    - Sensibilidad_decreciente: dado que observes que  el último valor de capital_ganadora 
+    fue mayor que el primer valor de capital_ganadora y que  el último capital_perdedora fue mayor 
+    que el primer valor de capital_perdedora.
+    '''
+        
+    resultados = pd.DataFrame(
+                            { 
+                                    'ocurrencias':
+                                        [len(datos)],
+                                        
+                                    'status_quo':
+                                        [len([1 for i in range(len(datos)) 
+                                            if datos.iloc[i,0] < datos.iloc[i,1]]) /
+                                         len(datos)],
     
+                                    'aversion_perdida':
+                                        [len([1 for i in range(len(datos)) 
+                                            if datos.iloc[i,2] > 150]) / 
+                                        len(datos)],
+    
+                                    'sensibilidad_decreciente':
+                                        ['si']
+                                    }, index = ['Valor']
+                                ).T
                 
-    return df
+    return {'ocurrencias': ocu, 'resultados':resultados}
 
 
 #%%
-
-
-
-
 
 
 

@@ -8,7 +8,8 @@
 
 
 import matplotlib.pyplot as plt
-from principal import df_profit, temp
+from principal import df_profit, data
+import numpy as np
 
 #%%
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
@@ -16,7 +17,7 @@ from principal import df_profit, temp
 
 plt.plot(df_profit['timestamp'], df_profit['profit_acm'])
 # Titulo
-plt.title('Profit acumulado')
+plt.title('Profit acumulado por dia')
 # Eje X
 plt.xlabel('tiempo')
 plt.xticks(rotation=90)
@@ -24,9 +25,18 @@ plt.xticks(rotation=90)
 plt.ylabel('Capital')
 plt.show()
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
-#%%
 
+#%%
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+# Grafica de capital acumulado por operacion
+plt.plot(np.arange(len(data)), data['capital_acm'])
+# Titulo
+plt.title('Profit acumulado por operacion')
+# Eje X
+plt.xlabel('operacion')
+# Eje Y
+plt.ylabel('Capital')
+plt.show()
 
 
 
