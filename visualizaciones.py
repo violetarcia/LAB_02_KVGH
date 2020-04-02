@@ -8,14 +8,37 @@
 
 
 import matplotlib.pyplot as plt
-from principal import df_profit, data
+from principal import df_profit, data, df_2_ranking
+from funciones import drawdown
 import numpy as np
 
-#%%
+#%% Parte II
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+# Grafica de barras del ranking
+
+fig = plt.figure(u'Gráfica de barras') # Figure
+ax = fig.add_subplot(111) # Axes
+
+nombres = list(df_2_ranking.index)
+datos = sum(df_2_ranking.values.tolist(), [])
+xx = range(len(datos))
+
+ax.bar(xx, datos, width=0.8, align='center')
+ax.set_xticks(xx)
+ax.set_xticklabels(nombres, rotation=45)
+
+plt.show()
+
+#%% Parte III
+
+up, down = drawdown(df_profit, 'profit_acm', string = False)
+
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 # Grafica del capital acumulado a traves del tiempo
+plt.plot(df_profit['timestamp'], df_profit['profit_acm'], color = 'k')
+plt.plot(df_profit['timestamp'][down[1:]], df_profit['profit_acm'][down[1:]], '--', color='Red')
+plt.plot(df_profit['timestamp'][up[1:]], df_profit['profit_acm'][up[1:]], '--', color='Green')
 
-plt.plot(df_profit['timestamp'], df_profit['profit_acm'])
 # Titulo
 plt.title('Profit acumulado por dia')
 # Eje X
@@ -38,6 +61,19 @@ plt.xlabel('operacion')
 plt.ylabel('Capital')
 plt.show()
 
+
+
+
+#%% pip install --upgrade pip
+# Hacerlo en plotly
+
+#import plotly.plotly as py
+#from plotly.graph_objs import *
+#py.sign_in('violetarcia', '')
+
+#import plotly.express as px
+#fig = px.bar(data, x='year', y='pop')
+#fig.show()
 
 
 

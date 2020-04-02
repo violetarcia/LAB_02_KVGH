@@ -9,6 +9,8 @@ from oandapyV20 import API
 import oandapyV20.endpoints.instruments as instruments
 import pandas as pd
 import numpy as np
+import bisect
+import pandas_datareader.data as web
 import datos as dat
 
 #%%
@@ -452,12 +454,15 @@ def log_dailiy_rends(param_profit, col):
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 '''Funcion para calcular drawdown: 
 '''
-def drawdown(param_profit, col):
+
+def drawdown(param_profit, col, string = True):
     """
     Parameters
     ---------
     :param:
         param_profit: DataFrame : rendimientos de las operaciones diarias
+        col: str : nombre de la columna para calcular drawdown
+        string: bol : para salida tipo string
 
     Returns
     ---------
@@ -467,12 +472,41 @@ def drawdown(param_profit, col):
     Debuggin
     ---------
         param_profit = f_profit_diario(f_leer_archivo('archivo_tradeview_1.xlsx'))
+        col = 'profit_acm'
     """
-    param_profit['down'] = (param_profit[col] - param_profit[col].cummax())
-    param_profit['up'] = param_profit[col].cummax()
+    down = (param_profit[col] - param_profit[col].cummax()) #/ param_profit[col].cummax()
     
-    return param_profit
+    up = (param_profit[col] - param_profit[col].cummin()) #/ param_profit[col].cummin()
+    
+    # DOWN
+    ans_down = round(down.min(), 3)
+    fin_down = down.idxmin()
+    
+    ceros_down = down.loc[down == 0].index.tolist()
+    bisect.insort(ceros_down, fin_down)
+    
+    inicio_down = ceros_down[ceros_down.index(fin_down) - 1]
+    
+    # UP
+    ans_up = round(up.max(), 3)
+    fin_up = up.idxmax()
+    
+    ceros_up = up.loc[up == 0].index.tolist()
+    bisect.insort(ceros_up, fin_up)
+    
+    inicio_up = ceros_up[ceros_up.index(fin_up) - 1]
+    
+    if string: # Up, Down
+        return [str(ans_up) +" | "+ fecha(param_profit.timestamp[inicio_up]) + " | " +fecha(
+                    param_profit.timestamp[fin_up])], [str(ans_down)+ " | " + fecha(
+                    param_profit.timestamp[inicio_down]) + " | "+fecha(param_profit.timestamp[fin_down])]
+        
+    else:
+        return [ans_up, inicio_up, fin_up], [
+                ans_down, inicio_down, fin_down]
 
+def fecha(date):
+        return str(date)[:10]
 
 # - - - - - - - - - - - - - - - - - - - - - - FUNCION: Medidas de Atribución al Desempeño - #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
@@ -480,7 +514,7 @@ def drawdown(param_profit, col):
     1.- Sharpe Ratio: (rp - rf)/std
     2.- Sortino Ratio: (rp - mar)/std(-)
 '''
-def f_estadisticas_mad(param_profit):
+def f_estadisticas_mad(param_data):
     """
     Parameters
     ---------
@@ -496,15 +530,52 @@ def f_estadisticas_mad(param_profit):
     ---------
         param_profit = f_profit_diario(f_leer_archivo('archivo_tradeview_1.xlsx'))
     """
+    # Sacar el profit de las Operaciones
+    param_profit = log_dailiy_rends(f_profit_diario(param_data), 'profit_acm')
+        # Solo de compra
+    param_profit_compra = log_dailiy_rends(f_profit_diario(
+                                            param_data[
+                                                    param_data['type'] == 'buy']),
+                                    'profit_acm')
+        # Solo de venta
+    param_profit_venta = log_dailiy_rends(f_profit_diario(
+                                            param_data[
+                                                    param_data['type'] == 'sell']), 
+                                    'profit_acm')
+    
     # Rendimientos
     rp = param_profit['rends']
+    rp_c = param_profit_compra['rends']
+    rp_v = param_profit_venta['rends']
+    
     
     # -- DATOS --
     # Tasa libre de riesgo
     rf = dat.rf/360
-    # Benchmark
-    benchmark = dat.benchmark
+    # Minimum Acceptable Return
+    mar = dat.mar/360
     
+    
+    # -- BENCHMARK --
+    # Descarga de datos
+    sp500 = pd.DataFrame(web.YahooDailyReader('^GSPC',  
+                                 fecha(param_profit['timestamp'].min()),
+                                 fecha(param_profit['timestamp'].max()), 
+                                 interval='d').read()['Close'])
+    # Rendimientos
+    sp500_rends = log_dailiy_rends(sp500, 'Close')
+    # Media de Benchmark
+    benchmark = sp500_rends['rends'].mean()
+    # Merge por fechas
+    merge_ben = sp500_rends.merge(pd.DataFrame(param_profit), 
+                        right_on='timestamp', left_index=True)
+    # Agregar columna de diferencia
+    merge_ben['dif'] = merge_ben['rends_y'] - merge_ben['rends_x']
+    
+    
+    # -- DRAWDOWN --
+    draw_up, draw_down = drawdown(param_profit, 'profit_acm')
+
     # Crear DataFrame con estadisticas
     df_estadistic = pd.DataFrame(
             {
@@ -512,21 +583,21 @@ def f_estadisticas_mad(param_profit):
                         [(rp.mean() - rf) / rp.std()],
                         
                     'Sortino_c':
-                        [(rp.mean() - rf) / (rp[rp < 0].std())],
+                        [(rp_c.mean() - mar) / (rp[rp < mar].std())],
                         
                     'Sortino_v':
-                        [(rp.mean() - rf) / (rp[rp > 0].std())],
+                        [(rp_v.mean() - mar) / (rp[rp > mar].std())],
                         
-                    'Drawdown_capi_c':
-                        [param_profit['down'].min()],
+                    'Drawdown_capi':
+                        draw_down,
                     
-                    'Drawdown_capi_u':
-                        [param_profit['up'].max() - dat.cap],
+                    'Drawup_capi':
+                        draw_up,
                         
                     'Information':
-                        [rp.mean() / benchmark]
+                        [(rp.mean() - benchmark)/merge_ben.dif.std()]
                         
-                        }
+                        }, index = ['values']
                 )
                         
     return df_estadistic.T
@@ -691,12 +762,23 @@ def f_sesgos_cognitivo(param_data):
                                                     ], sort=False, ignore_index = True)
                                     ], axis = 1, sort=False)
                         for i in range(len(pos_ocu_concat))]
+                                     
+    # Agregar perdida flotante
+    for i in range(len(prec_posibles_ocu)):
+        # (Precio on close - Precio de apertura) *
+        # Profit / (Precio de cierre - Precio de apertura)
+        prec_posibles_ocu[i]['perdida_flot'] = (prec_posibles_ocu[i][
+                'price_on_close'] - prec_posibles_ocu[i][
+                        'openprice']) * (prec_posibles_ocu[i][
+                                'profit'] / (prec_posibles_ocu[i][
+                                        'closeprice'] - prec_posibles_ocu[i][
+                                                'openprice'])) 
                 
     # Llenar lista con Diccionarios
     ocu = []
     k = 0
     for j in range(len(precios)):
-        # Para guardar el profit y tomar el de mayo
+        # Para guardar la perdida flotante y tomar la mayor
         profits, indices = [],  []
         for i in range(len(precios[j])):
             ''' Si el precio en closetime ganador es menor al precio de apertura 
@@ -708,7 +790,7 @@ def f_sesgos_cognitivo(param_data):
                                     i+1] and pos_ocu_concat[j]['type'][i+1] == 'sell':
                 
                 # Guardar el profit para tomar el maximo (abs)
-                profits.append((pos_ocu_concat[j]['profit'][i+1]))
+                profits.append((prec_posibles_ocu[j]['perdida_flot'][i+1]))
                 # Guardar el indice del profit
                 indices.append(i+1)
         #print(profits, indices)
@@ -740,6 +822,8 @@ def f_sesgos_cognitivo(param_data):
                                                             pos_ocu_concat[j]['size'][0],
                                                         'capital_ganadora':
                                                             pos_ocu_concat[j]['profit'][0],
+                                                        'capital_acm':
+                                                            pos_ocu_concat[j]['capital_acm'][0]
                                                          },
                                                      
                                                'perdedora':
@@ -748,6 +832,8 @@ def f_sesgos_cognitivo(param_data):
                                                             pos_ocu_concat[j]['symbol'][indices[ind]],
                                                         'sentido':
                                                             pos_ocu_concat[j]['type'][indices[ind]],
+                                                        'volumen':
+                                                            pos_ocu_concat[j]['size'][indices[ind]],
                                                         'profit':
                                                             pos_ocu_concat[j]['profit'][indices[ind]],
                                                         'capital_perdedora':
@@ -762,7 +848,7 @@ def f_sesgos_cognitivo(param_data):
                                             round(abs(pos_ocu_concat[j]['profit'][0]/
                                              pos_ocu_concat[j]['capital_acm'][0])*100, 3),
                                       'ratio_cp_cg':
-                                            round(abs(new_profit/pos_ocu_concat[j]['profit'][0])*100, 3)
+                                            round(abs(new_profit/pos_ocu_concat[j]['profit'][0]), 3)
                                         }
                                 }
                         )
@@ -772,7 +858,8 @@ def f_sesgos_cognitivo(param_data):
             pd.DataFrame([
             ocu[i-1]['ocurrencia %d'%i]['ratio_cp_capital_acm'],
             ocu[i-1]['ocurrencia %d'%i]['ratio_cg_capital_acm'],
-            ocu[i-1]['ocurrencia %d'%i]['ratio_cp_cg']
+            ocu[i-1]['ocurrencia %d'%i]['ratio_cp_cg'],
+            ocu[i-1]['ocurrencia %d'%i]['operaciones']['ganadora']['capital_acm']
                     ])
             for i in range(1, len(ocu)+1)], axis=1, ignore_index = True).T
     '''
@@ -782,7 +869,7 @@ def f_sesgos_cognitivo(param_data):
     fue mayor que el primer valor de capital_ganadora y que  el último capital_perdedora fue mayor 
     que el primer valor de capital_perdedora.
     '''
-        
+    first_last = pd.concat([datos.iloc[0,:], datos.iloc[len(datos)-1, :]], axis=1, ignore_index=True).T
     resultados = pd.DataFrame(
                             { 
                                     'ocurrencias':
@@ -795,21 +882,24 @@ def f_sesgos_cognitivo(param_data):
     
                                     'aversion_perdida':
                                         [len([1 for i in range(len(datos)) 
-                                            if datos.iloc[i,2] > 150]) / 
+                                            if datos.iloc[i,2] > 1.5]) / 
                                         len(datos)],
     
                                     'sensibilidad_decreciente':
-                                        ['si']
+                                        ['si' if first_last.iloc[0,3] < first_last.iloc[
+                                                1,3] and first_last.iloc[1,2] > 1.5 and (
+                                                    first_last.iloc[0,0] < first_last.iloc[1,0] or 
+                                                    first_last.iloc[0,1] < first_last.iloc[1,1]
+                                        ) else 'no']
                                     }, index = ['Valor']
                                 ).T
                 
     return {'ocurrencias': ocu, 'resultados':resultados}
 
 
-#%%
 
 
-
+                                       
 
 
 

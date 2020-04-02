@@ -37,19 +37,17 @@ df_profit = fn.f_profit_diario(data)
 # Agregar rendimientos 
 fn.log_dailiy_rends(df_profit, 'profit_acm')
 
-# Columnas de drawdown
-fn.drawdown(df_profit, 'profit_acm')
-
 # Estadisticas de metricas de desempeño
-df_profit_estad = fn.f_estadisticas_mad(df_profit)
+df_profit_estad = fn.f_estadisticas_mad(data)
 
 
 # -- PART IV --
 
 # Operaciones ganadora vs perdedora (ocurrencia)
-operaciones = fn.f_sesgos_cognitivo(data)
+sesgos = fn.f_sesgos_cognitivo(data)
+operaciones = sesgos['ocurrencias']
 
-# Porcentaje de profit ganadoras 7 profit perdedoras
+# Porcentaje de profit ganadoras / profit perdedoras
 porcentaje = abs(sum(data[data['profit/cap'] > 0]['profit/cap']) /
              sum(data[data['profit/cap'] < 0]['profit/cap']))
 
@@ -57,9 +55,5 @@ porcentaje = abs(sum(data[data['profit/cap'] > 0]['profit/cap']) /
 t1 = time()
 
 print(t1 - t0)
-
-#%%
-
-
 
 
