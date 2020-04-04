@@ -6,11 +6,12 @@
 # -- repositorio: https://github.com/violetarcia/LAB_02_KVGH.git
 # -- ------------------------------------------------------------------------------------ -- #
 
-
+import numpy as np
 import matplotlib.pyplot as plt
 from principal import df_profit, data, df_2_ranking
 from funciones import f_drawdown
-import numpy as np
+from pandas.plotting import register_matplotlib_converters
+register_matplotlib_converters()
 
 #%% Parte II
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
@@ -26,7 +27,7 @@ xx = range(len(datos))
 ax.bar(xx, datos, width=0.8, align='center')
 ax.set_xticks(xx)
 ax.set_xticklabels(nombres, rotation=45)
-
+plt.title('Ranking')
 plt.show()
 
 #%% Parte III
@@ -35,6 +36,7 @@ up, down = f_drawdown(df_profit, 'profit_acm', string=False)
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 # Grafica del capital acumulado a traves del tiempo
+fig_dd = plt.figure()
 plt.plot(df_profit['timestamp'], df_profit['profit_acm'], color = 'k')
 plt.plot(df_profit['timestamp'][down[1:]], df_profit['profit_acm'][down[1:]], '--', color='Red')
 plt.plot(df_profit['timestamp'][up[1:]], df_profit['profit_acm'][up[1:]], '--', color='Green')
