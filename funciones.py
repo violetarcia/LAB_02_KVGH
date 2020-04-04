@@ -419,6 +419,10 @@ def f_profit_diario(param_data):
     # Merge todas la fechas con aquellas en las que se hicieron operaciones
     df_profit = dates.merge(profit_d, how='outer', sort = True).fillna(0)
     
+    # Quitar los sabados
+    df_profit = df_profit[df_profit.timestamp.dt.weekday != 5]
+    df_profit.reset_index(drop=True, inplace=True)
+    
     # Agregar el profit acumulado diario
     df_profit['profit_acm'] = round(dat.cap + np.cumsum(df_profit['profit_d']), 2)
         
@@ -928,6 +932,28 @@ def f_sesgos_cognitivo(param_data):
                                 ).T
                 
     return {'ocurrencias': ocu, 'resultados':resultados}
+
+
+def dataframe_ocurrencias(operaciones):
+    datos = pd.concat([
+            pd.DataFrame([       
+                    operaciones[i-1]['ocurrencia %d'%i]['timestamp'],
+                    operaciones[i-1]['ocurrencia %d'%i]['operaciones']['ganadora']['capital_acm'],
+                    operaciones[i-1]['ocurrencia %d'%i]['operaciones']['ganadora']['instrumento'],
+                    operaciones[i-1]['ocurrencia %d'%i]['operaciones']['ganadora']['capital_ganadora'],
+                    operaciones[i-1]['ocurrencia %d'%i]['ratio_cg_capital_acm'],
+                    operaciones[i-1]['ocurrencia %d'%i]['operaciones']['perdedora']['instrumento'],
+                    operaciones[i-1]['ocurrencia %d'%i]['operaciones']['perdedora']['capital_perdedora'],
+                    operaciones[i-1]['ocurrencia %d'%i]['ratio_cp_capital_acm'],
+                    operaciones[i-1]['ocurrencia %d'%i]['operaciones']['perdedora']['profit'],
+                    operaciones[i-1]['ocurrencia %d'%i]['ratio_cp_cg']])
+            for i in range(1, len(operaciones)+1)], axis=1, ignore_index = True).T
+
+
+    datos.columns = ['CloseTime', 'Capital_acm', 'Ganadora', 'Gan_Profit', 'Gan/Cap_acm',
+                    'Perdedora', 'Perdida_flotante', 'Perd/Cap_acm', 'Perd_Tot',
+                    'Ratio cp/cg']
+    return datos
 
 
 
