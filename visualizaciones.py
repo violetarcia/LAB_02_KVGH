@@ -9,15 +9,15 @@
 
 import matplotlib.pyplot as plt
 from principal import df_profit, data, df_2_ranking
-from funciones import drawdown
+from funciones import f_drawdown
 import numpy as np
 
 #%% Parte II
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 # Grafica de barras del ranking
 
-fig = plt.figure(u'Gráfica de barras') # Figure
-ax = fig.add_subplot(111) # Axes
+fig_rank = plt.figure('Gráfica de barras') # Figure
+ax = fig_rank.add_subplot(111) # Axes
 
 nombres = list(df_2_ranking.index)
 datos = sum(df_2_ranking.values.tolist(), [])
@@ -31,7 +31,7 @@ plt.show()
 
 #%% Parte III
 
-up, down = drawdown(df_profit, 'profit_acm', string = False)
+up, down = f_drawdown(df_profit, 'profit_acm', string=False)
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 # Grafica del capital acumulado a traves del tiempo

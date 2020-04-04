@@ -17,7 +17,7 @@ t0 = time()
 data = fn.f_leer_archivo('archivo_tradeview_2.xlsx')
 
 # Agregar la columna de los tiempos
-fn.f_columnas_tiempos(data)
+fn.f_columna_tiempos(data)
 
 # Agregar columna de pips
 fn.f_columna_pips(data)
@@ -45,15 +45,12 @@ df_profit_estad = fn.f_estadisticas_mad(data)
 
 # Operaciones ganadora vs perdedora (ocurrencia)
 sesgos = fn.f_sesgos_cognitivo(data)
-operaciones = sesgos['ocurrencias']
 
 # Porcentaje de profit ganadoras / profit perdedoras
 porcentaje = abs(sum(data[data['profit/cap'] > 0]['profit/cap']) /
              sum(data[data['profit/cap'] < 0]['profit/cap']))
 
 # Tiempo
-t1 = time()
-
-print(t1 - t0)
+print(time() - t0)
 
 

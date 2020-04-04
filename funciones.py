@@ -20,8 +20,8 @@ import datos as dat
 
 ''' Funcion para leer archivo de datos
         f_leer_archivo :
-        Leer tu archivo histórico de operaciones, 
-        es el que se descarga de MT4 en formato .xlsx.
+            Lee tu archivo historico de operaciones, 
+            es el que se descarga de MT4 en formato .xlsx.
 '''
 def f_leer_archivo(param_archivo):
     """
@@ -37,7 +37,7 @@ def f_leer_archivo(param_archivo):
 
     Debuggin
     ---------
-        param_archivo = 'archivo_tradeview_1.xlsx'
+        param_archivo = 'archivo_tradeview_2.xlsx'
 
     """
 
@@ -61,11 +61,10 @@ def f_leer_archivo(param_archivo):
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - FUNCION: pip de instrumento - #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
     
-''' Función para obtener el numero multplicador
-    para expresar la diferencia de precios en pips
+''' Función de pip por instrumento
         f_pip_size:
-        Función para obtener el número multiplicador 
-        para expresar la diferencia de precios en pips.
+            Función para obtener el número multiplicador 
+            para expresar la diferencia de precios en pips.
 '''
 def f_pip_size(param_ins):
     """
@@ -103,11 +102,11 @@ def f_pip_size(param_ins):
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  FUNCION: Tiempo de operacion - #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
     
-''' Función para agregar mas columnas de transformaciones de tiempo
+''' Función que mide el tiempo el closetime y opentime
         f_columnas_tiempos:
-        Agregar mas columnas de transformaciones de tiempo
+            Agregar columna de transformaciones de tiempo
 '''
-def f_columnas_tiempos(param_data):
+def f_columna_tiempos(param_data):
     """
 
     Parameters
@@ -139,7 +138,7 @@ def f_columnas_tiempos(param_data):
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - FUNCION: Columna de pip - #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 
-'''f_columnas_pips: Agregar nuevas columnas: 
+'''Funcion f_columnas_pips: Agregar nuevas columnas: 
     - - - - - - - - - - - - - - - - - - - -
     'pips', que es la columna de pérdida o ganancia de la operación expresada en pips
     - - - - - - - - - - - - - - - - - - - - 
@@ -189,8 +188,10 @@ def f_columna_pips(param_data):
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - FUNCION: Estadistica basica - #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 
-''' f_estadisticas_ba: Una función cuya salida es un diccionario, 
-    ese diccionario de salida debe de tener 2 llaves, 'df_1_tabla' y 'df_2_ranking'
+''' Funcion f_estadisticas_ba: 
+        Una función cuya salida es un diccionario, 
+        ese diccionario de salida debe de tener 2 llaves, 
+        'df_1_tabla' y 'df_2_ranking'
     - - - - - - - - - - - - - - - - - - - -
         df_1_tabla:
             
@@ -349,9 +350,10 @@ def f_estadistica_ba(param_data):
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  FUNCION: Capital acumulado - #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
-'''Funcion
-    Es la columna de evolución de capital en la cuenta de trading, inicializala con 5,000 Usd 
-    y va sumando (restando) las ganancias (perdidas) de la columna 'profit_acm'.
+'''Funcion f_columna_capital_acm:
+        Es la columna de evolución de capital en la cuenta de trading, 
+        inicializalizandola con el capital de datos (inicial - 5,000)
+        y va sumando las ganancias (restando perdidas) de la columna 'profit_acm'.
 '''
 def f_columna_capital_acm(param_data):
     """
@@ -425,7 +427,8 @@ def f_profit_diario(param_data):
 
 # - - - - - - - - - - - - - - - - - - - - - FUNCION: Columna de rendimientos logaritmicos - #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
-'''Funcion para calcular rendimientos logaritmicos diarios: 
+'''Funcion log_dailiy_rends:
+        Funcion para calcular rendimientos logaritmicos de la columna especificada
 '''
 def log_dailiy_rends(param_profit, col):
     """
@@ -433,6 +436,7 @@ def log_dailiy_rends(param_profit, col):
     ---------
     :param:
         param_profit: DataFrame : rendimientos de las operaciones diarias
+        col : str : nombre de la columna a la que se le calcula tales rendimientos
 
     Returns
     ---------
@@ -442,6 +446,7 @@ def log_dailiy_rends(param_profit, col):
     Debuggin
     ---------
         param_profit = f_profit_diario(f_leer_archivo('archivo_tradeview_1.xlsx'))
+        col = 'profit_acm'
     """
     param_profit['rends'] = np.log(
                 param_profit[col]/
@@ -450,12 +455,15 @@ def log_dailiy_rends(param_profit, col):
     return param_profit
 
 
-# - - - - - - - - - - - - - - - - - - - - - FUNCION: Columna de rendimientos logaritmicos - #
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - FUNCION: Para calcular drawdown - #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
-'''Funcion para calcular drawdown: 
+'''Funcion f_drawdown 
+        para calcular drawdown de la columna especificada del DataFrame
+        Tal DF debe tener una columna 'timestamp' para que regrese la fecha
+        de inicio y fin del Drawdown y Drawup
 '''
 
-def drawdown(param_profit, col, string = True):
+def f_drawdown(param_profit, col, string = True):
     """
     Parameters
     ---------
@@ -496,17 +504,36 @@ def drawdown(param_profit, col, string = True):
     
     inicio_up = ceros_up[ceros_up.index(fin_up) - 1]
     
-    if string: # Up, Down
-        return [str(ans_up) +" | "+ fecha(param_profit.timestamp[inicio_up]) + " | " +fecha(
-                    param_profit.timestamp[fin_up])], [str(ans_down)+ " | " + fecha(
-                    param_profit.timestamp[inicio_down]) + " | "+fecha(param_profit.timestamp[fin_down])]
+    if string: # [Up | fi | ff], [Down | fi | ff]
+        return [str(ans_up) +" | "+ fecha(
+                param_profit.timestamp[inicio_up]) + " | " +fecha(
+                    param_profit.timestamp[fin_up])], [
+                str(ans_down)+ " | " + fecha(
+                        param_profit.timestamp[inicio_down]) + " | "+fecha(
+                            param_profit.timestamp[fin_down])]
         
     else:
         return [ans_up, inicio_up, fin_up], [
                 ans_down, inicio_down, fin_down]
 
 def fecha(date):
-        return str(date)[:10]
+    """
+    Parameters
+    ---------
+    :param:
+        date : timestamp : fecha
+
+    Returns
+    ---------
+    :return: 
+        str(date)
+
+    Debuggin
+    ---------
+        date = pd.date()
+    """
+    return str(date)[:10]
+
 
 # - - - - - - - - - - - - - - - - - - - - - - FUNCION: Medidas de Atribución al Desempeño - #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
@@ -530,6 +557,12 @@ def f_estadisticas_mad(param_data):
     ---------
         param_profit = f_profit_diario(f_leer_archivo('archivo_tradeview_1.xlsx'))
     """
+    # -- DATOS --
+    # Tasa libre de riesgo
+    rf = dat.rf/360
+    # Minimum Acceptable Return
+    mar = dat.mar/360
+    
     # Sacar el profit de las Operaciones
     param_profit = log_dailiy_rends(f_profit_diario(param_data), 'profit_acm')
         # Solo de compra
@@ -548,12 +581,12 @@ def f_estadisticas_mad(param_data):
     rp_c = param_profit_compra['rends']
     rp_v = param_profit_venta['rends']
     
+    # Target Downside Deviation (sortinos)
+    tdd_c = rp_c - mar
+    tdd_c[tdd_c > 0] = 0
     
-    # -- DATOS --
-    # Tasa libre de riesgo
-    rf = dat.rf/360
-    # Minimum Acceptable Return
-    mar = dat.mar/360
+    tdd_v = rp_v - mar
+    tdd_v[tdd_v > 0] = 0
     
     
     # -- BENCHMARK --
@@ -574,7 +607,7 @@ def f_estadisticas_mad(param_data):
     
     
     # -- DRAWDOWN --
-    draw_up, draw_down = drawdown(param_profit, 'profit_acm')
+    draw_up, draw_down = f_drawdown(param_profit, 'profit_acm')
 
     # Crear DataFrame con estadisticas
     df_estadistic = pd.DataFrame(
@@ -583,10 +616,10 @@ def f_estadisticas_mad(param_data):
                         [(rp.mean() - rf) / rp.std()],
                         
                     'Sortino_c':
-                        [(rp_c.mean() - mar) / (rp[rp < mar].std())],
+                        [(rp_c.mean() - mar) / (((tdd_c**2).mean())**(0.5))],
                         
                     'Sortino_v':
-                        [(rp_v.mean() - mar) / (rp[rp > mar].std())],
+                        [(rp_v.mean() - mar) / (((tdd_v**2).mean())**(0.5))],
                         
                     'Drawdown_capi':
                         draw_down,
