@@ -19,9 +19,11 @@ rf = 0.08
 mar = 0.3
 
 
-# OANDA
+# OANDA token
 OANDA_ACCESS_TOKEN = '800f1b3f91d7cb0a713c532e17823f6d-f9acd6a21490f97aef649dfd8e723435'
 
+# Indice que se usará como Benchmark
+benchmark = 'SPX500_USD'
 
 
 

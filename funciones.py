@@ -10,7 +10,6 @@ import oandapyV20.endpoints.instruments as instruments
 import pandas as pd
 import numpy as np
 import bisect
-import pandas_datareader.data as web
 import datos as dat
 
 #%%
@@ -20,8 +19,8 @@ import datos as dat
 
 ''' Funcion para leer archivo de datos
         f_leer_archivo :
-        Leer tu archivo histórico de operaciones, 
-        es el que se descarga de MT4 en formato .xlsx.
+            Lee tu archivo historico de operaciones, 
+            es el que se descarga de MT4 en formato .xlsx.
 '''
 def f_leer_archivo(param_archivo):
     """
@@ -37,7 +36,7 @@ def f_leer_archivo(param_archivo):
 
     Debuggin
     ---------
-        param_archivo = 'archivo_tradeview_1.xlsx'
+        param_archivo = 'archivo_tradeview_2.xlsx'
 
     """
 
@@ -61,11 +60,10 @@ def f_leer_archivo(param_archivo):
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - FUNCION: pip de instrumento - #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
     
-''' Función para obtener el numero multplicador
-    para expresar la diferencia de precios en pips
+''' Función de pip por instrumento
         f_pip_size:
-        Función para obtener el número multiplicador 
-        para expresar la diferencia de precios en pips.
+            Función para obtener el número multiplicador 
+            para expresar la diferencia de precios en pips.
 '''
 def f_pip_size(param_ins):
     """
@@ -103,11 +101,11 @@ def f_pip_size(param_ins):
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  FUNCION: Tiempo de operacion - #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
     
-''' Función para agregar mas columnas de transformaciones de tiempo
+''' Función que mide el tiempo el closetime y opentime
         f_columnas_tiempos:
-        Agregar mas columnas de transformaciones de tiempo
+            Agregar columna de transformaciones de tiempo
 '''
-def f_columnas_tiempos(param_data):
+def f_columna_tiempos(param_data):
     """
 
     Parameters
@@ -123,7 +121,6 @@ def f_columnas_tiempos(param_data):
     Debuggin
     ---------
         param_data = f_leer_archivo('archivo_tradeview_1.xlsx')
-
     """
     # Convertir el tipo de las columnas de closetime y opentime a 'Date'
     param_data['closetime'] = pd.to_datetime(param_data['closetime'])
@@ -139,7 +136,7 @@ def f_columnas_tiempos(param_data):
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - FUNCION: Columna de pip - #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 
-'''f_columnas_pips: Agregar nuevas columnas: 
+'''Funcion f_columnas_pips: Agregar nuevas columnas: 
     - - - - - - - - - - - - - - - - - - - -
     'pips', que es la columna de pérdida o ganancia de la operación expresada en pips
     - - - - - - - - - - - - - - - - - - - - 
@@ -189,8 +186,10 @@ def f_columna_pips(param_data):
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - FUNCION: Estadistica basica - #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 
-''' f_estadisticas_ba: Una función cuya salida es un diccionario, 
-    ese diccionario de salida debe de tener 2 llaves, 'df_1_tabla' y 'df_2_ranking'
+''' Funcion f_estadisticas_ba: 
+        Una función cuya salida es un diccionario, 
+        ese diccionario de salida debe de tener 2 llaves, 
+        'df_1_tabla' y 'df_2_ranking'
     - - - - - - - - - - - - - - - - - - - -
         df_1_tabla:
             
@@ -340,7 +339,7 @@ def f_estadistica_ba(param_data):
         
    # df_2_ranking.applymap('{:.2f}%'.format)
     
-    return df_1_tabla, df_2_ranking
+    return { 'estadisticas': df_1_tabla, 'ranking': df_2_ranking}
 
 
 # - - - - - - - - - - - - - - - - - - - - - - -
@@ -349,9 +348,10 @@ def f_estadistica_ba(param_data):
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  FUNCION: Capital acumulado - #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
-'''Funcion
-    Es la columna de evolución de capital en la cuenta de trading, inicializala con 5,000 Usd 
-    y va sumando (restando) las ganancias (perdidas) de la columna 'profit_acm'.
+'''Funcion f_columna_capital_acm:
+        Es la columna de evolución de capital en la cuenta de trading, 
+        inicializalizandola con el capital de datos (inicial - 5,000)
+        y va sumando las ganancias (restando perdidas) de la columna 'profit_acm'.
 '''
 def f_columna_capital_acm(param_data):
     """
@@ -417,6 +417,11 @@ def f_profit_diario(param_data):
     # Merge todas la fechas con aquellas en las que se hicieron operaciones
     df_profit = dates.merge(profit_d, how='outer', sort = True).fillna(0)
     
+    # Quitar los sabados
+    df_profit = df_profit[df_profit.timestamp.dt.weekday != 5]
+    df_profit.reset_index(drop=True, inplace=True)
+    df_profit['timestamp'] = df_profit['timestamp'].dt.date
+    
     # Agregar el profit acumulado diario
     df_profit['profit_acm'] = round(dat.cap + np.cumsum(df_profit['profit_d']), 2)
         
@@ -425,7 +430,8 @@ def f_profit_diario(param_data):
 
 # - - - - - - - - - - - - - - - - - - - - - FUNCION: Columna de rendimientos logaritmicos - #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
-'''Funcion para calcular rendimientos logaritmicos diarios: 
+'''Funcion log_dailiy_rends:
+        Funcion para calcular rendimientos logaritmicos de la columna especificada
 '''
 def log_dailiy_rends(param_profit, col):
     """
@@ -433,6 +439,7 @@ def log_dailiy_rends(param_profit, col):
     ---------
     :param:
         param_profit: DataFrame : rendimientos de las operaciones diarias
+        col : str : nombre de la columna a la que se le calcula tales rendimientos
 
     Returns
     ---------
@@ -442,6 +449,7 @@ def log_dailiy_rends(param_profit, col):
     Debuggin
     ---------
         param_profit = f_profit_diario(f_leer_archivo('archivo_tradeview_1.xlsx'))
+        col = 'profit_acm'
     """
     param_profit['rends'] = np.log(
                 param_profit[col]/
@@ -450,12 +458,15 @@ def log_dailiy_rends(param_profit, col):
     return param_profit
 
 
-# - - - - - - - - - - - - - - - - - - - - - FUNCION: Columna de rendimientos logaritmicos - #
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - FUNCION: Para calcular drawdown - #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
-'''Funcion para calcular drawdown: 
+'''Funcion f_drawdown 
+        para calcular drawdown de la columna especificada del DataFrame
+        Tal DF debe tener una columna 'timestamp' para que regrese la fecha
+        de inicio y fin del Drawdown y Drawup
 '''
 
-def drawdown(param_profit, col, string = True):
+def f_drawdown(param_profit, col, string = True):
     """
     Parameters
     ---------
@@ -496,17 +507,36 @@ def drawdown(param_profit, col, string = True):
     
     inicio_up = ceros_up[ceros_up.index(fin_up) - 1]
     
-    if string: # Up, Down
-        return [str(ans_up) +" | "+ fecha(param_profit.timestamp[inicio_up]) + " | " +fecha(
-                    param_profit.timestamp[fin_up])], [str(ans_down)+ " | " + fecha(
-                    param_profit.timestamp[inicio_down]) + " | "+fecha(param_profit.timestamp[fin_down])]
+    if string: # [Up | fi | ff], [Down | fi | ff]
+        return [str(ans_up) +" | "+ fecha(
+                param_profit.timestamp[inicio_up]) + " | " +fecha(
+                    param_profit.timestamp[fin_up])], [
+                str(ans_down)+ " | " + fecha(
+                        param_profit.timestamp[inicio_down]) + " | "+fecha(
+                            param_profit.timestamp[fin_down])]
         
     else:
         return [ans_up, inicio_up, fin_up], [
                 ans_down, inicio_down, fin_down]
 
 def fecha(date):
-        return str(date)[:10]
+    """
+    Parameters
+    ---------
+    :param:
+        date : timestamp : fecha
+
+    Returns
+    ---------
+    :return: 
+        str(date)
+
+    Debuggin
+    ---------
+        date = pd.date()
+    """
+    return str(date)[:10]
+
 
 # - - - - - - - - - - - - - - - - - - - - - - FUNCION: Medidas de Atribución al Desempeño - #
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
@@ -530,7 +560,13 @@ def f_estadisticas_mad(param_data):
     ---------
         param_profit = f_profit_diario(f_leer_archivo('archivo_tradeview_1.xlsx'))
     """
-    # Sacar el profit de las Operaciones
+    # -- DATOS --
+    # Tasa libre de riesgo
+    rf = dat.rf/360
+    # Minimum Acceptable Return
+    mar = dat.mar/360
+    
+    # Sacar el rend de profit diario de las Operaciones
     param_profit = log_dailiy_rends(f_profit_diario(param_data), 'profit_acm')
         # Solo de compra
     param_profit_compra = log_dailiy_rends(f_profit_diario(
@@ -548,33 +584,30 @@ def f_estadisticas_mad(param_data):
     rp_c = param_profit_compra['rends']
     rp_v = param_profit_venta['rends']
     
+    # Target Downside Deviation (sortinos)
+    tdd_c = rp_c - mar
+    tdd_c[tdd_c > 0] = 0
     
-    # -- DATOS --
-    # Tasa libre de riesgo
-    rf = dat.rf/360
-    # Minimum Acceptable Return
-    mar = dat.mar/360
+    tdd_v = rp_v - mar
+    tdd_v[tdd_v > 0] = 0
     
     
     # -- BENCHMARK --
     # Descarga de datos
-    sp500 = pd.DataFrame(web.YahooDailyReader('^GSPC',  
-                                 fecha(param_profit['timestamp'].min()),
-                                 fecha(param_profit['timestamp'].max()), 
-                                 interval='d').read()['Close'])
+    sp500= f_precios(dat.benchmark, param_profit['timestamp'].min(), param_profit['timestamp'].max())
     # Rendimientos
     sp500_rends = log_dailiy_rends(sp500, 'Close')
     # Media de Benchmark
     benchmark = sp500_rends['rends'].mean()
     # Merge por fechas
     merge_ben = sp500_rends.merge(pd.DataFrame(param_profit), 
-                        right_on='timestamp', left_index=True)
+                        right_on='timestamp', left_on='timestamp')
     # Agregar columna de diferencia
     merge_ben['dif'] = merge_ben['rends_y'] - merge_ben['rends_x']
     
     
     # -- DRAWDOWN --
-    draw_up, draw_down = drawdown(param_profit, 'profit_acm')
+    draw_up, draw_down = f_drawdown(param_profit, 'profit_acm')
 
     # Crear DataFrame con estadisticas
     df_estadistic = pd.DataFrame(
@@ -583,10 +616,10 @@ def f_estadisticas_mad(param_data):
                         [(rp.mean() - rf) / rp.std()],
                         
                     'Sortino_c':
-                        [(rp_c.mean() - mar) / (rp[rp < mar].std())],
+                        [(rp_c.mean() - mar) / (((tdd_c**2).mean())**(0.5))],
                         
                     'Sortino_v':
-                        [(rp_v.mean() - mar) / (rp[rp > mar].std())],
+                        [(rp_v.mean() - mar) / (((tdd_v**2).mean())**(0.5))],
                         
                     'Drawdown_capi':
                         draw_down,
@@ -614,7 +647,7 @@ def f_estadisticas_mad(param_data):
     Y el timestamp pd.to_datetime("2019-08-27 09:16:01").tz_localize('GMT')
 '''
     
-def f_precios(param_instrument, date):
+def f_precios(*args):
     """
     Parameters
     ---------
@@ -626,26 +659,50 @@ def f_precios(param_instrument, date):
     ---------
     :return: 
         float: precio del intrumento en tal fecha
+        DataFram: precios del indice
 
     Debuggin
     ---------
         instrument = 'EUR_USD'
         date = pd.to_datetime("2019-07-06 00:00:00")
     """ 
+    # Parametros 
+    param = args
     # Inicializar api de OANDA
     api = API(environment = "practice", access_token = dat.OANDA_ACCESS_TOKEN)
-    # Convertir en string la fecha
-    fecha = date.strftime('%Y-%m-%dT%H:%M:%S')
-    # Parametros
-    parameters = {"count": 1, "granularity": 'M1', "price": "M", "dailyAlignment": 16, "from": fecha}
-    # Definir el instrumento del que se quiere el precio
-    r = instruments.InstrumentsCandles(instrument = param_instrument, params = parameters)
-    # Descargarlo de OANDA
-    response = api.request(r)
-    # En fomato candles 'open, low, high, close'
-    prices = response.get("candles")
-    # Regresar el precio de apertura
-    return float(prices[0]['mid']['o'])
+    
+    # Para los precios de la parte 4 y buscar ocurrencias
+    if len(param) == 2:
+        # Convertir en string la fecha
+        fecha = param[1].strftime('%Y-%m-%dT%H:%M:%S')
+        # Parametros
+        parameters = {"count": 1, "granularity": 'M1', "price": "M", "dailyAlignment": 16, "from": fecha}
+        # Definir el instrumento del que se quiere el precio
+        r = instruments.InstrumentsCandles(instrument = param[0], params = parameters)
+        # Descargarlo de OANDA
+        response = api.request(r)
+        # En fomato candles 'open, low, high, close'
+        prices = response.get("candles")
+        # Regresar el precio de apertura
+        return float(prices[0]['mid']['o'])
+    
+    # Para el benchmark
+    if len(param) == 3:
+        # Fechas del rango que se quieren
+        fecha_inicio = param[1].strftime('%Y-%m-%dT%H:%M:%S')
+        fecha_final = param[2].strftime('%Y-%m-%dT%H:%M:%S')
+        # Parametros
+        parameters = {"granularity": 'D', "price": "M", "dailyAlignment": 16, 
+                      "from": fecha_inicio, "to": fecha_final}
+        # Definir el instrumento del que se quiere el precio
+        r = instruments.InstrumentsCandles(instrument = param[0], params = parameters)
+        # Descargarlo de OANDA
+        response = api.request(r)
+        # En fomato candles 'open, low, high, close'
+        prices = response.get("candles")
+        # Regresar el precio de apertura
+        return pd.DataFrame([ [pd.to_datetime(i['time']).date(), float(i['mid']['c'])] for i in prices ], 
+                            columns = ['timestamp', 'Close'])
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - -  FUNCION: Cambiar string para adaptarlo - #
@@ -895,6 +952,28 @@ def f_sesgos_cognitivo(param_data):
                                 ).T
                 
     return {'ocurrencias': ocu, 'resultados':resultados}
+
+
+def dataframe_ocurrencias(operaciones):
+    datos = pd.concat([
+            pd.DataFrame([       
+                    operaciones[i-1]['ocurrencia %d'%i]['timestamp'],
+                    operaciones[i-1]['ocurrencia %d'%i]['operaciones']['ganadora']['capital_acm'],
+                    operaciones[i-1]['ocurrencia %d'%i]['operaciones']['ganadora']['instrumento'],
+                    operaciones[i-1]['ocurrencia %d'%i]['operaciones']['ganadora']['capital_ganadora'],
+                    operaciones[i-1]['ocurrencia %d'%i]['ratio_cg_capital_acm'],
+                    operaciones[i-1]['ocurrencia %d'%i]['operaciones']['perdedora']['instrumento'],
+                    operaciones[i-1]['ocurrencia %d'%i]['operaciones']['perdedora']['capital_perdedora'],
+                    operaciones[i-1]['ocurrencia %d'%i]['ratio_cp_capital_acm'],
+                    operaciones[i-1]['ocurrencia %d'%i]['operaciones']['perdedora']['profit'],
+                    operaciones[i-1]['ocurrencia %d'%i]['ratio_cp_cg']])
+            for i in range(1, len(operaciones)+1)], axis=1, ignore_index = True).T
+
+
+    datos.columns = ['CloseTime', 'Capital_acm', 'Ganadora', 'Gan_Profit', 'Gan/Cap_acm',
+                    'Perdedora', 'Perdida_flotante', 'Perd/Cap_acm', 'Perd_Tot',
+                    'Ratio cp/cg']
+    return datos
 
 
 

@@ -6,18 +6,21 @@
 # -- repositorio: https://github.com/violetarcia/LAB_02_KVGH.git
 # -- ------------------------------------------------------------------------------------ -- #
 
-
-import matplotlib.pyplot as plt
-from principal import df_profit, data, df_2_ranking
-from funciones import drawdown
 import numpy as np
+import matplotlib.pyplot as plt
+from principal import df_profit, data, df_estadistic
+from funciones import f_drawdown
+from pandas.plotting import register_matplotlib_converters
+register_matplotlib_converters()
 
 #%% Parte II
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
-# Grafica de barras del ranking
+# Datos
+df_2_ranking = df_estadistic['ranking']
 
-fig = plt.figure(u'Gráfica de barras') # Figure
-ax = fig.add_subplot(111) # Axes
+# Grafica de barras del ranking
+fig_rank = plt.figure('Gráfica de barras') # Figure
+ax = fig_rank.add_subplot(111) # Axes
 
 nombres = list(df_2_ranking.index)
 datos = sum(df_2_ranking.values.tolist(), [])
@@ -26,15 +29,16 @@ xx = range(len(datos))
 ax.bar(xx, datos, width=0.8, align='center')
 ax.set_xticks(xx)
 ax.set_xticklabels(nombres, rotation=45)
-
+plt.title('Ranking')
 plt.show()
 
 #%% Parte III
 
-up, down = drawdown(df_profit, 'profit_acm', string = False)
+up, down = f_drawdown(df_profit, 'profit_acm', string=False)
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 # Grafica del capital acumulado a traves del tiempo
+fig_dd = plt.figure()
 plt.plot(df_profit['timestamp'], df_profit['profit_acm'], color = 'k')
 plt.plot(df_profit['timestamp'][down[1:]], df_profit['profit_acm'][down[1:]], '--', color='Red')
 plt.plot(df_profit['timestamp'][up[1:]], df_profit['profit_acm'][up[1:]], '--', color='Green')
@@ -52,28 +56,8 @@ plt.show()
 #%%
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 # Grafica de capital acumulado por operacion
-plt.plot(np.arange(len(data)), data['capital_acm'])
-# Titulo
-plt.title('Profit acumulado por operacion')
-# Eje X
-plt.xlabel('operacion')
-# Eje Y
-plt.ylabel('Capital')
-plt.show()
+#plt.plot(np.arange(len(data)), data['capital_acm'])
 
-
-
-
-#%% pip install --upgrade pip
-# Hacerlo en plotly
-
-#import plotly.plotly as py
-#from plotly.graph_objs import *
-#py.sign_in('violetarcia', '')
-
-#import plotly.express as px
-#fig = px.bar(data, x='year', y='pop')
-#fig.show()
 
 
 
