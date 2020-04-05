@@ -8,15 +8,17 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-from principal import df_profit, data, df_2_ranking
+from principal import df_profit, data, df_estadistic
 from funciones import f_drawdown
 from pandas.plotting import register_matplotlib_converters
 register_matplotlib_converters()
 
 #%% Parte II
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
-# Grafica de barras del ranking
+# Datos
+df_2_ranking = df_estadistic['ranking']
 
+# Grafica de barras del ranking
 fig_rank = plt.figure('Gráfica de barras') # Figure
 ax = fig_rank.add_subplot(111) # Axes
 

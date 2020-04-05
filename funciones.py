@@ -10,7 +10,6 @@ import oandapyV20.endpoints.instruments as instruments
 import pandas as pd
 import numpy as np
 import bisect
-import pandas_datareader.data as web
 import datos as dat
 
 #%%
@@ -122,7 +121,6 @@ def f_columna_tiempos(param_data):
     Debuggin
     ---------
         param_data = f_leer_archivo('archivo_tradeview_1.xlsx')
-
     """
     # Convertir el tipo de las columnas de closetime y opentime a 'Date'
     param_data['closetime'] = pd.to_datetime(param_data['closetime'])
@@ -341,7 +339,7 @@ def f_estadistica_ba(param_data):
         
    # df_2_ranking.applymap('{:.2f}%'.format)
     
-    return df_1_tabla, df_2_ranking
+    return { 'estadisticas': df_1_tabla, 'ranking': df_2_ranking}
 
 
 # - - - - - - - - - - - - - - - - - - - - - - -
@@ -422,6 +420,7 @@ def f_profit_diario(param_data):
     # Quitar los sabados
     df_profit = df_profit[df_profit.timestamp.dt.weekday != 5]
     df_profit.reset_index(drop=True, inplace=True)
+    df_profit['timestamp'] = df_profit['timestamp'].dt.date
     
     # Agregar el profit acumulado diario
     df_profit['profit_acm'] = round(dat.cap + np.cumsum(df_profit['profit_d']), 2)
@@ -567,7 +566,7 @@ def f_estadisticas_mad(param_data):
     # Minimum Acceptable Return
     mar = dat.mar/360
     
-    # Sacar el profit de las Operaciones
+    # Sacar el rend de profit diario de las Operaciones
     param_profit = log_dailiy_rends(f_profit_diario(param_data), 'profit_acm')
         # Solo de compra
     param_profit_compra = log_dailiy_rends(f_profit_diario(
@@ -595,17 +594,14 @@ def f_estadisticas_mad(param_data):
     
     # -- BENCHMARK --
     # Descarga de datos
-    sp500 = pd.DataFrame(web.YahooDailyReader('^GSPC',  
-                                 fecha(param_profit['timestamp'].min()),
-                                 fecha(param_profit['timestamp'].max()), 
-                                 interval='d').read()['Close'])
+    sp500= f_precios(dat.benchmark, param_profit['timestamp'].min(), param_profit['timestamp'].max())
     # Rendimientos
     sp500_rends = log_dailiy_rends(sp500, 'Close')
     # Media de Benchmark
     benchmark = sp500_rends['rends'].mean()
     # Merge por fechas
     merge_ben = sp500_rends.merge(pd.DataFrame(param_profit), 
-                        right_on='timestamp', left_index=True)
+                        right_on='timestamp', left_on='timestamp')
     # Agregar columna de diferencia
     merge_ben['dif'] = merge_ben['rends_y'] - merge_ben['rends_x']
     
@@ -651,7 +647,7 @@ def f_estadisticas_mad(param_data):
     Y el timestamp pd.to_datetime("2019-08-27 09:16:01").tz_localize('GMT')
 '''
     
-def f_precios(param_instrument, date):
+def f_precios(*args):
     """
     Parameters
     ---------
@@ -663,26 +659,50 @@ def f_precios(param_instrument, date):
     ---------
     :return: 
         float: precio del intrumento en tal fecha
+        DataFram: precios del indice
 
     Debuggin
     ---------
         instrument = 'EUR_USD'
         date = pd.to_datetime("2019-07-06 00:00:00")
     """ 
+    # Parametros 
+    param = args
     # Inicializar api de OANDA
     api = API(environment = "practice", access_token = dat.OANDA_ACCESS_TOKEN)
-    # Convertir en string la fecha
-    fecha = date.strftime('%Y-%m-%dT%H:%M:%S')
-    # Parametros
-    parameters = {"count": 1, "granularity": 'M1', "price": "M", "dailyAlignment": 16, "from": fecha}
-    # Definir el instrumento del que se quiere el precio
-    r = instruments.InstrumentsCandles(instrument = param_instrument, params = parameters)
-    # Descargarlo de OANDA
-    response = api.request(r)
-    # En fomato candles 'open, low, high, close'
-    prices = response.get("candles")
-    # Regresar el precio de apertura
-    return float(prices[0]['mid']['o'])
+    
+    # Para los precios de la parte 4 y buscar ocurrencias
+    if len(param) == 2:
+        # Convertir en string la fecha
+        fecha = param[1].strftime('%Y-%m-%dT%H:%M:%S')
+        # Parametros
+        parameters = {"count": 1, "granularity": 'M1', "price": "M", "dailyAlignment": 16, "from": fecha}
+        # Definir el instrumento del que se quiere el precio
+        r = instruments.InstrumentsCandles(instrument = param[0], params = parameters)
+        # Descargarlo de OANDA
+        response = api.request(r)
+        # En fomato candles 'open, low, high, close'
+        prices = response.get("candles")
+        # Regresar el precio de apertura
+        return float(prices[0]['mid']['o'])
+    
+    # Para el benchmark
+    if len(param) == 3:
+        # Fechas del rango que se quieren
+        fecha_inicio = param[1].strftime('%Y-%m-%dT%H:%M:%S')
+        fecha_final = param[2].strftime('%Y-%m-%dT%H:%M:%S')
+        # Parametros
+        parameters = {"granularity": 'D', "price": "M", "dailyAlignment": 16, 
+                      "from": fecha_inicio, "to": fecha_final}
+        # Definir el instrumento del que se quiere el precio
+        r = instruments.InstrumentsCandles(instrument = param[0], params = parameters)
+        # Descargarlo de OANDA
+        response = api.request(r)
+        # En fomato candles 'open, low, high, close'
+        prices = response.get("candles")
+        # Regresar el precio de apertura
+        return pd.DataFrame([ [pd.to_datetime(i['time']).date(), float(i['mid']['c'])] for i in prices ], 
+                            columns = ['timestamp', 'Close'])
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - -  FUNCION: Cambiar string para adaptarlo - #

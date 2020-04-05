@@ -23,7 +23,7 @@ fn.f_columna_tiempos(data)
 fn.f_columna_pips(data)
 
 # DataFrames de Estadisticas basicas y ranking
-df_1_tabla, df_2_ranking = fn.f_estadistica_ba(data)
+df_estadistic = fn.f_estadistica_ba(data)
 
 
 # -- PART III --
