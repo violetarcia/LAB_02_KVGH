@@ -33,7 +33,7 @@ fn.f_columna_capital_acm(data)
 
 # DataFrame de profits
 df_profit = fn.f_profit_diario(data)
-#%%
+
 
 # Agregar rendimientos 
 fn.log_dailiy_rends(df_profit, 'profit_acm')
