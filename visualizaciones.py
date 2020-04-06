@@ -30,7 +30,7 @@ ax.bar(xx, datos, width=0.8, align='center')
 ax.set_xticks(xx)
 ax.set_xticklabels(nombres, rotation=45)
 plt.title('Ranking de las ganadoras por instrumento')
-plt.xlabel('porcentaje')
+plt.ylabel('porcentaje')
 plt.show()
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
@@ -50,7 +50,7 @@ ax.bar(xx, datos, width=0.8, align='center')
 ax.set_xticks(xx)
 ax.set_xticklabels(nombres, rotation=45)
 plt.title('Ranking del profit por instrumento')
-plt.xlabel('dinero')
+plt.ylabel('dinero')
 plt.show()
 
 #%% Parte III
