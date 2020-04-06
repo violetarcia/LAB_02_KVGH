@@ -14,7 +14,7 @@ t0 = time()
 # -- PART II --
 
 # Leer archivo (el de Francisco es el 2)
-data = fn.f_leer_archivo('archivo_tradeview_2.xlsx')
+data = fn.f_leer_archivo('archivo_tradeview_1.xlsx')
 
 # Agregar la columna de los tiempos
 fn.f_columna_tiempos(data)
@@ -33,7 +33,7 @@ fn.f_columna_capital_acm(data)
 
 # DataFrame de profits
 df_profit = fn.f_profit_diario(data)
-#%%
+
 
 # Agregar rendimientos 
 fn.log_dailiy_rends(df_profit, 'profit_acm')
