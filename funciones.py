@@ -85,6 +85,7 @@ def f_pip_size(param_ins):
 
     """
 
+    # Agregar: 'usddkk', 'usdsgd', 'usdcnh'
     # lista de pips por instrumento
     pips_instrument = {
                 'usdjpy': 100, 'gbpjpy': 100, 'eurjpy': 100, 'cadjpy': 100,
@@ -92,9 +93,10 @@ def f_pip_size(param_ins):
                  'usdmxn': 10000,'audusd': 10000, 'nzdusd': 10000, 'usdchf': 10000,
                  'eurgbp': 10000, 'eurchf': 10000, 'eurnzd': 10000, 'euraud': 10000,
                  'gbpnzd': 10000, 'gbpchf': 10000, 'gbpaud': 10000, 'audnzd': 10000, 
-                 'nzdcad': 10000, 'audcad': 10000, 'xauusd': 10, 'xagusd': 10, 'btcusd': 1
+                 'nzdcad': 10000, 'audcad': 10000, 'usddkk': 10000, 'usdsgd': 10000, 
+                 'xauusd': 10, 'usdcnh':10000,
+                 'xagusd': 10, 'btcusd': 1
                  }
-
     return pips_instrument[param_ins.lower()]
 
 
@@ -320,7 +322,7 @@ def f_estadistica_ba(param_data):
     symbols = param_data.symbol.unique()
     
     # Creacion de DataFrame con ranking por symbol
-    df_2_ranking = pd.DataFrame(
+    df_1_ranking = pd.DataFrame(
             {
                 # Symbol
                 i: 
@@ -337,9 +339,21 @@ def f_estadistica_ba(param_data):
                 by='ranking', 
                 ascending=False)
         
+    
+    # Segundo Ranking, no sólo de ganadoras sino de la suma del profit por symbol
+    df_2_ranking = pd.DataFrame(
+            {
+                    i: 
+                        param_data[param_data['symbol'] == i]['profit'].sum() 
+                for i in symbols}, 
+                
+            index = ['ranking']).T.sort_values(
+                by='ranking', 
+                ascending=False)
+        
    # df_2_ranking.applymap('{:.2f}%'.format)
     
-    return { 'estadisticas': df_1_tabla, 'ranking': df_2_ranking}
+    return { 'estadisticas': df_1_tabla, 'ranking': df_1_ranking, 'ranking 2': df_2_ranking}
 
 
 # - - - - - - - - - - - - - - - - - - - - - - -

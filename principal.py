@@ -14,7 +14,7 @@ t0 = time()
 # -- PART II --
 
 # Leer archivo (el de Francisco es el 2)
-data = fn.f_leer_archivo('archivo_tradeview_2.xlsx')
+data = fn.f_leer_archivo('archivo_tradeview_1.xlsx')
 
 # Agregar la columna de los tiempos
 fn.f_columna_tiempos(data)

@@ -16,11 +16,31 @@ register_matplotlib_converters()
 #%% Parte II
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 # Datos
-df_2_ranking = df_estadistic['ranking']
+df_1_ranking = df_estadistic['ranking']
 
 # Grafica de barras del ranking
 fig_rank = plt.figure('Gráfica de barras') # Figure
 ax = fig_rank.add_subplot(111) # Axes
+
+nombres = list(df_1_ranking.index)
+datos = sum(df_1_ranking.values.tolist(), [])
+xx = range(len(datos))
+
+ax.bar(xx, datos, width=0.8, align='center')
+ax.set_xticks(xx)
+ax.set_xticklabels(nombres, rotation=45)
+plt.title('Ranking de las ganadoras por instrumento')
+plt.xlabel('porcentaje')
+plt.show()
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+# Segundo Ranking
+# Datos
+df_2_ranking = df_estadistic['ranking 2']
+
+# Grafica de barras del ranking
+fig_rank2 = plt.figure('Gráfica de barras') # Figure
+ax = fig_rank2.add_subplot(111) # Axes
 
 nombres = list(df_2_ranking.index)
 datos = sum(df_2_ranking.values.tolist(), [])
@@ -29,7 +49,8 @@ xx = range(len(datos))
 ax.bar(xx, datos, width=0.8, align='center')
 ax.set_xticks(xx)
 ax.set_xticklabels(nombres, rotation=45)
-plt.title('Ranking')
+plt.title('Ranking del profit por instrumento')
+plt.xlabel('dinero')
 plt.show()
 
 #%% Parte III
@@ -56,7 +77,15 @@ plt.show()
 #%%
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 # Grafica de capital acumulado por operacion
-#plt.plot(np.arange(len(data)), data['capital_acm'])
+fig_cap = plt.figure()
+plt.plot(np.arange(len(data)), data['capital_acm'])
+# Titulo
+plt.title('Profit acumulado por operacion')
+# Eje X
+plt.xlabel('operacion')
+# Eje Y
+plt.ylabel('Capital')
+plt.show()
 
 
 
