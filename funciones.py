@@ -986,7 +986,7 @@ def dataframe_ocurrencias(operaciones):
 
     datos.columns = ['CloseTime', 'Capital_acm', 'Ganadora', 'Gan_Profit', 'Gan/Cap_acm',
                     'Perdedora', 'Perdida_flotante', 'Perd/Cap_acm', 'Perd_Tot',
-                    'Ratio cp/cg']
+                    'Ratio_cp/cg']
     return datos
 
 
